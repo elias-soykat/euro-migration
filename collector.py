@@ -127,103 +127,135 @@ def clean_text(text):
 
 def parse_card_html(html, url, country, country_code, serial, year):
     soup = BeautifulSoup(html, "html.parser")
-    record = {
-        "country": country,
-        "country_code": country_code,
-        "serial_number": serial,
-        "verification_url": url,
-        "year": str(year),
-        "candidate_name": "",
-        "ec_no": "",
-        "ec_date": "",
-        "photo_url": "",
-        "emigration_clearance": {},
-        "recruiting_agency": {},
-        "bmet_registration": {},
-        "passports": {},
-        "permanent_address": {},
-        "emergency_contact": {},
-        "all_fields": {}
-    }
 
-    # Photo URL
+    candidate_name = ""
+    photo_url = ""
+    ec_no = f"{country_code}-I-{year}-{serial}"
+    ec_date = ""
+
     pic_div = soup.find("div", id="pic-wrap")
     if pic_div and pic_div.find("img"):
-        record["photo_url"] = pic_div.find("img").get("src", "").strip()
+        photo_url = pic_div.find("img").get("src", "").strip()
 
-    # Candidate Name & EC No / Date in info-board
     info_board = soup.find("div", id="info-board")
     if info_board:
         p_tags = info_board.find_all("p")
         if len(p_tags) > 0:
-            record["candidate_name"] = clean_text(p_tags[0].get_text())
+            candidate_name = clean_text(p_tags[0].get_text())
         for sp in info_board.find_all("span", class_="card-label"):
             lbl = clean_text(sp.get_text()).rstrip(":").strip()
             nxt = sp.find_next_sibling("span")
             val = clean_text(nxt.get_text()) if nxt else ""
             if lbl == "EC No":
-                record["ec_no"] = val
+                ec_no = val
             elif lbl == "EC Date":
-                record["ec_date"] = val
-            record["all_fields"][lbl] = val
+                ec_date = val
 
-    # Agency board (Emigration clearance table)
+    cl_table = {}
     agency_board = soup.find("div", id="agency-board")
-    if agency_board:
-        table = agency_board.find("table")
-        if table:
-            for tr in table.find_all("tr"):
-                th = tr.find("th")
-                td = tr.find("td")
-                if th and td:
-                    k = clean_text(th.get_text()).rstrip(":").strip()
-                    v = clean_text(td.get_text())
-                    record["emigration_clearance"][k] = v
-                    record["all_fields"][f"Clearance - {k}"] = v
+    if agency_board and agency_board.find("table"):
+        for tr in agency_board.find("table").find_all("tr"):
+            th = tr.find("th")
+            td = tr.find("td")
+            if th and td:
+                cl_table[clean_text(th.get_text()).rstrip(":").strip()] = clean_text(td.get_text())
 
-    # Other wrap sections
-    section_map = {
-        "Recruiting Agency": "recruiting_agency",
-        "BMET Registration": "bmet_registration",
-        "Passports": "passports",
-        "Permanent Address": "permanent_address",
-        "Emergency Contact": "emergency_contact"
-    }
-
+    section_tables = {}
     wraps = soup.find_all("div", id="wrap")
     for wrap in wraps:
-        # Skip top clearance wrap if it contains #agency-board
         if wrap.find("div", id="agency-board"):
             continue
-
         top = wrap.find("div", id="top")
         if not top:
             continue
         title_div = top.find("div", class_="title")
         if not title_div:
             continue
-        sec_title = clean_text(title_div.get_text())
-
-        matched_key = None
-        for k_title, sec_key in section_map.items():
-            if k_title.lower() in sec_title.lower():
-                matched_key = sec_key
-                break
+        sec_title = clean_text(title_div.get_text()).lower()
 
         table = wrap.find("table")
         if table:
+            row_dict = {}
             for tr in table.find_all("tr"):
                 th = tr.find("th")
                 td = tr.find("td")
                 if th and td:
-                    field_name = clean_text(th.get_text()).rstrip(":").strip()
-                    val = clean_text(td.get_text())
-                    if matched_key:
-                        record[matched_key][field_name] = val
-                        record["all_fields"][f"{sec_title} - {field_name}"] = val
-                    else:
-                        record["all_fields"][f"{sec_title} - {field_name}"] = val
+                    row_dict[clean_text(th.get_text()).rstrip(":").strip()] = clean_text(td.get_text())
 
+            if "agency" in sec_title:
+                section_tables["agency"] = row_dict
+            elif "registration" in sec_title:
+                section_tables["bmet"] = row_dict
+            elif "passports" in sec_title:
+                section_tables["passports"] = row_dict
+            elif "address" in sec_title:
+                section_tables["address"] = row_dict
+            elif "emergency" in sec_title:
+                section_tables["emergency"] = row_dict
+
+    passports_obj = section_tables.get("passports", {})
+    cl_passport = cl_table.get("Passport No", "").strip()
+    prev_passports = []
+    for k, v in passports_obj.items():
+        if k != "Name" and v and v.strip() != cl_passport:
+            if v.strip() not in prev_passports:
+                prev_passports.append(v.strip())
+
+    bm = section_tables.get("bmet", {})
+    ra = section_tables.get("agency", {})
+    pa = section_tables.get("address", {})
+    ec = section_tables.get("emergency", {})
+
+    record = {
+        "country": country,
+        "country_code": country_code,
+        "year": str(year),
+        "serial_number": int(serial),
+        "ec_no": ec_no,
+        "ec_date": ec_date,
+        "verification_url": url,
+        "photo_url": photo_url,
+        "candidate_name": candidate_name,
+        "birth_date": cl_table.get("Birth Date", bm.get("Birth Date", "")).strip(),
+        "gender": bm.get("Gender", "").strip(),
+        "blood_group": cl_table.get("Blood Group", "").strip(),
+        "nid": str(bm.get("NID", "")).strip(),
+        "bmet_no": bm.get("BMET No", "").strip(),
+        "passport": {
+            "passport_no": cl_passport or passports_obj.get("Passport No 1", "").strip(),
+            "issue_date": cl_table.get("Passport Issue Date", "").strip(),
+            "expire_date": cl_table.get("Passport Expire Date", "").strip(),
+            "previous_passports": prev_passports
+        },
+        "visa": {
+            "visa_no": str(cl_table.get("Visa No", "")).strip(),
+            "issue_date": cl_table.get("Visa Issue Date", "").strip(),
+            "expire_date": cl_table.get("Visa Expire Date", "").strip()
+        },
+        "employment": {
+            "employer": cl_table.get("Employer", "").strip(),
+            "referral_no": str(cl_table.get("Referral No", "")).strip()
+        },
+        "recruiting_agency": {
+            "name": ra.get("Name", "").strip(),
+            "license_no": str(ra.get("License No", "")).strip(),
+            "phone": str(ra.get("Phone", "")).strip()
+        },
+        "permanent_address": {
+            "house_vill_road": pa.get("House/Vill/Road", "").strip(),
+            "post_office": pa.get("Post Office", "").strip(),
+            "police_station": pa.get("Police Station", "").strip(),
+            "upazila": pa.get("Upazila", "").strip(),
+            "district": pa.get("District", "").strip(),
+            "division": pa.get("Division", "").strip()
+        },
+        "emergency_contact": {
+            "name": ec.get("Name", "").strip(),
+            "relation": ec.get("Relation", "").strip(),
+            "mobile": str(ec.get("Mobile", "")).strip(),
+            "address": ec.get("Address", "").strip()
+        }
+    }
     return record
 
 def fetch_single_card(country_info, serial):

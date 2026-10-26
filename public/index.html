@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BMET Clearance Card Directory — European Migration 2026</title>
+    <meta name="description" content="Searchable, verified directory of Bureau of Manpower, Employment and Training (BMET) Emigration Clearance Cards issued for 12 European countries in 2026.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Top Navigation Bar -->
+    <header class="app-header">
+        <div class="nav-container">
+            <div class="brand-group" id="navHomeBtn">
+                <div class="brand-logo">
+                    <span class="logo-icon">🇪🇺</span>
+                </div>
+                <div class="brand-text">
+                    <span class="brand-title">BMET Clearance Directory</span>
+                    <span class="brand-subtitle">European Migration • Year 2026</span>
+                </div>
+            </div>
+            
+            <div class="header-stats-strip" id="headerStatsStrip">
+                <div class="stat-pill" title="Total verified cards across all 12 countries">
+                    <span class="stat-dot green"></span>
+                    <span class="stat-label">Total Cards:</span>
+                    <span class="stat-val" id="globalTotalCards">—</span>
+                </div>
+                <div class="stat-pill" title="European destination countries tracked">
+                    <span class="stat-label">Destinations:</span>
+                    <span class="stat-val">12 Countries</span>
+                </div>
+                <div class="stat-pill online" title="RAIMS Portal Connectivity">
+                    <span class="stat-dot pulse"></span>
+                    <span class="stat-label">Live Sync:</span>
+                    <span class="stat-val">Connected</span>
+                </div>
+            </div>
+
+            <div class="nav-actions">
+                <button class="btn btn-secondary btn-sm" id="navViewAllBtn">
+                    <span class="btn-icon">📁</span>
+                    <span>All Countries</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-content">
+        <!-- Toast Notification Container -->
+        <div class="toast-container" id="toastContainer"></div>
+
+        <!-- VIEW 1: Countries Directory Grid (Home) -->
+        <section class="view-section active" id="viewDirectory">
+            <div class="hero-banner">
+                <div class="hero-content">
+                    <div class="badge hero-badge">Verified BMET RAIMS Database</div>
+                    <h1 class="hero-title">European Migration E-Card Directory</h1>
+                    <p class="hero-subtitle">
+                        Comprehensive registry of Bureau of Manpower, Employment and Training (BMET) emigration clearance cards issued for European destinations. Browse verified records or check live for newly issued cards.
+                    </p>
+                </div>
+                <div class="hero-metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-num" id="heroTotalCards">26,375</div>
+                        <div class="metric-label">Verified E-Cards</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-num">12</div>
+                        <div class="metric-label">European Countries</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-num">100%</div>
+                        <div class="metric-label">Audit Completeness</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="directory-controls">
+                <div class="section-heading-wrap">
+                    <h2 class="section-title">Select a Destination Country</h2>
+                    <p class="section-desc">Click any country to browse, search, and filter its complete clearance registry, or click "Check for New Cards" to query the live portal.</p>
+                </div>
+                <div class="directory-filter-box">
+                    <input type="text" id="countrySearchInput" class="form-input search-input" placeholder="Filter countries by name or code...">
+                </div>
+            </div>
+
+            <!-- Country Cards Grid -->
+            <div class="countries-grid" id="countriesGrid">
+                <!-- Dynamically populated by app.js -->
+            </div>
+        </section>
+
+        <!-- VIEW 2: Country Cards Explorer View -->
+        <section class="view-section" id="viewCountryExplorer">
+            <!-- Breadcrumbs and Country Banner -->
+            <div class="country-header-card">
+                <div class="breadcrumb-bar">
+                    <button class="back-link-btn" id="explorerBackBtn">
+                        <span class="back-arrow">←</span> All Countries
+                    </button>
+                    <span class="breadcrumb-separator">/</span>
+                    <span class="breadcrumb-current" id="explorerCountryBreadcrumb">Portugal</span>
+                </div>
+
+                <div class="country-info-row">
+                    <div class="country-title-box">
+                        <span class="country-flag-hero" id="explorerFlag">🇵🇹</span>
+                        <div>
+                            <div class="country-meta-pill" id="explorerCode">PT</div>
+                            <h1 class="country-hero-name" id="explorerCountryName">Portugal</h1>
+                            <p class="country-stat-summary" id="explorerCardSummary">
+                                Loading cards registry...
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="country-action-box">
+                        <button class="btn btn-primary btn-sync" id="checkNewCardsBtn">
+                            <span class="sync-icon" id="syncIcon">🔄</span>
+                            <span id="checkNewBtnText">Check for New Cards</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Update Status Message Banner -->
+                <div class="update-status-banner hidden" id="updateStatusBanner">
+                    <div class="status-icon-box" id="statusBannerIcon">ℹ️</div>
+                    <div class="status-text-box">
+                        <div class="status-title" id="statusBannerTitle">Check Status</div>
+                        <div class="status-msg" id="statusBannerMsg">No new BMET clearance cards issued for this country.</div>
+                    </div>
+                    <button class="status-dismiss-btn" id="statusDismissBtn">✕</button>
+                </div>
+            </div>
+
+            <!-- Search and Filter Toolbar -->
+            <div class="explorer-toolbar">
+                <div class="search-box-group">
+                    <div class="search-input-wrapper">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" id="cardSearchInput" class="form-input search-input" placeholder="Search by name, passport, serial, visa, employer, agency...">
+                        <button class="clear-search-btn hidden" id="clearSearchBtn">✕</button>
+                    </div>
+
+                    <div class="filter-dropdown-wrapper">
+                        <label for="filterFieldSelect" class="toolbar-label">Search in:</label>
+                        <select id="filterFieldSelect" class="form-select">
+                            <option value="all">All Fields</option>
+                            <option value="name">Candidate Name</option>
+                            <option value="passport">Passport No</option>
+                            <option value="serial">Serial / EC No</option>
+                            <option value="employer">Employer</option>
+                            <option value="agency">Recruiting Agency</option>
+                            <option value="district">Home District</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="toolbar-right-group">
+                    <div class="sort-dropdown-wrapper">
+                        <label for="sortBySelect" class="toolbar-label">Sort By:</label>
+                        <select id="sortBySelect" class="form-select">
+                            <option value="serial_desc">Serial Number (Highest First)</option>
+                            <option value="serial_asc">Serial Number (Lowest First)</option>
+                            <option value="date_desc">EC Date (Newest First)</option>
+                            <option value="date_asc">EC Date (Oldest First)</option>
+                            <option value="name_asc">Candidate Name (A – Z)</option>
+                            <option value="name_desc">Candidate Name (Z – A)</option>
+                        </select>
+                    </div>
+
+                    <div class="view-toggle-wrapper">
+                        <button class="view-toggle-btn active" id="viewTableBtn" title="Table View">
+                            <span>☰ Table</span>
+                        </button>
+                        <button class="view-toggle-btn" id="viewGridBtn" title="Cards View">
+                            <span>▦ Cards</span>
+                        </button>
+                    </div>
+
+                    <div class="limit-select-wrapper">
+                        <select id="pageLimitSelect" class="form-select form-select-sm" title="Cards per page">
+                            <option value="25">25 / page</option>
+                            <option value="50">50 / page</option>
+                            <option value="100">100 / page</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Status Bar -->
+            <div class="results-meta-bar">
+                <span id="resultsCountText">Showing 1 – 25 of 6,573 cards</span>
+                <span class="active-query-tag hidden" id="activeQueryTag"></span>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div class="loading-state hidden" id="cardsLoadingState">
+                <div class="spinner"></div>
+                <p>Loading clearance records...</p>
+            </div>
+
+            <!-- Empty State -->
+            <div class="empty-state hidden" id="cardsEmptyState">
+                <div class="empty-icon">📂</div>
+                <h3>No Clearance Cards Found</h3>
+                <p id="emptyStateMsg">No cards match the search query. Try broadening your keywords.</p>
+                <button class="btn btn-secondary btn-sm" id="resetSearchBtn">Reset Search</button>
+            </div>
+
+            <!-- Cards Table View Container -->
+            <div class="table-container" id="cardsTableContainer">
+                <table class="data-table" id="cardsTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 70px;">Photo</th>
+                            <th style="width: 150px;">Serial / EC No</th>
+                            <th>Candidate Name</th>
+                            <th>Passport No</th>
+                            <th>EC Date</th>
+                            <th>Visa No</th>
+                            <th>Employer</th>
+                            <th>Recruiting Agency</th>
+                            <th style="text-align: right; width: 100px;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cardsTableBody">
+                        <!-- Populated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Cards Grid View Container -->
+            <div class="cards-grid-container hidden" id="cardsGridContainer">
+                <!-- Populated dynamically -->
+            </div>
+
+            <!-- Pagination Bar -->
+            <div class="pagination-bar" id="paginationBar">
+                <div class="pagination-info" id="paginationInfo">Page 1 of 263</div>
+                <div class="pagination-controls" id="paginationControls">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Card Detail Modal -->
+    <div class="modal-backdrop hidden" id="cardDetailModal">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <span class="modal-flag" id="modalFlag">🇵🇹</span>
+                    <div>
+                        <h3 class="modal-title" id="modalTitle">BMET Clearance Card</h3>
+                        <span class="modal-ec-no" id="modalEcNo">PT-I-2026-6000001</span>
+                    </div>
+                </div>
+                <button class="modal-close-btn" id="modalCloseBtn">✕</button>
+            </div>
+
+            <div class="modal-body" id="modalBody">
+                <!-- E-Card Styled Card Presentation -->
+                <div class="ecard-preview">
+                    <div class="ecard-header">
+                        <div class="ecard-gov-title">
+                            <span class="bn-title">গণপ্রজাতন্ত্রী বাংলাদেশ সরকার</span>
+                            <span class="bn-subtitle">জনশক্তি কর্মসংস্থান ও প্রশিক্ষণ ব্যুরো</span>
+                            <span class="en-title">Emigration Clearance • বহির্গমন ছাড়পত্র</span>
+                        </div>
+                    </div>
+
+                    <div class="ecard-candidate-row">
+                        <div class="ecard-photo-wrap">
+                            <img src="" alt="Candidate Photo" id="modalPhoto" class="ecard-photo" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'100\' height=\'100\' viewBox=\'0 0 24 24\' fill=\'%2364748b\'><path d=\'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z\'/></svg>'">
+                        </div>
+                        <div class="ecard-hero-info">
+                            <h2 class="ecard-candidate-name" id="modalCandidateName">—</h2>
+                            <div class="ecard-badge-row">
+                                <span class="ecard-badge" id="modalEcDate">Date: —</span>
+                                <span class="ecard-badge country" id="modalCountryBadge">—</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Details Sections -->
+                    <div class="ecard-sections">
+                        <!-- Section 1: Clearance Details -->
+                        <div class="ecard-section">
+                            <div class="section-pill">Emigration Clearance Details</div>
+                            <div class="details-grid" id="modalClearanceGrid"></div>
+                        </div>
+
+                        <!-- Section 2: Recruiting Agency -->
+                        <div class="ecard-section">
+                            <div class="section-pill">Recruiting Agency</div>
+                            <div class="details-grid" id="modalAgencyGrid"></div>
+                        </div>
+
+                        <!-- Section 3: BMET Registration -->
+                        <div class="ecard-section">
+                            <div class="section-pill">BMET Registration</div>
+                            <div class="details-grid" id="modalBmetGrid"></div>
+                        </div>
+
+                        <!-- Section 4: Address Details -->
+                        <div class="ecard-section">
+                            <div class="section-pill">Permanent Address</div>
+                            <div class="details-grid" id="modalAddressGrid"></div>
+                        </div>
+
+                        <!-- Section 5: Emergency Contact -->
+                        <div class="ecard-section">
+                            <div class="section-pill">Emergency Contact</div>
+                            <div class="details-grid" id="modalEmergencyGrid"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-primary" id="modalVerifyUrlBtn">
+                    <span class="btn-icon">🔗</span>
+                    <span>Verify on Official RAIMS Portal</span>
+                </a>
+                <button class="btn btn-secondary" id="modalCopyUrlBtn">
+                    <span class="btn-icon">📋</span>
+                    <span>Copy URL</span>
+                </button>
+                <button class="btn btn-secondary" id="modalDownloadJsonBtn">
+                    <span class="btn-icon">💾</span>
+                    <span>Download JSON</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+        <div class="footer-container">
+            <div>
+                <strong>BMET Clearance Card Directory (2026)</strong> — European Migration Verification Portal.
+            </div>
+            <div class="footer-links">
+                <span>Data Source: <a href="https://raims.oep.gov.bd" target="_blank" rel="noopener noreferrer">RAIMS Bureau of Manpower, Employment and Training (BMET)</a></span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Application Script -->
+    <script src="app.js"></script>
+</body>
+</html>

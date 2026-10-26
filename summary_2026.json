@@ -33,10 +33,11 @@
       "highest_record_issuance_date": "26/Oct/2026"
     },
     "last_record_details": {
-      "ec_no": "PT-I-2026-6006573",
-      "ec_date": "26/Oct/2026",
-      "candidate_name": "HRIDOY SHIL"
-    }
+      "ec_no": "PT-I-2026-6000001",
+      "ec_date": "03/Jan/2026",
+      "candidate_name": "FARDUS HASAN SOAIB"
+    },
+    "last_checked_timestamp": "2026-10-26 19:49:58"
   },
   {
     "country_name": "Italy",
@@ -150,10 +151,11 @@
       "highest_record_issuance_date": "19/Oct/2026"
     },
     "last_record_details": {
-      "ec_no": "CY-I-2026-6002387",
-      "ec_date": "19/Oct/2026",
-      "candidate_name": "MD ZIHAD HASAN JOY"
-    }
+      "ec_no": "CY-I-2026-6000001",
+      "ec_date": "05/Jan/2026",
+      "candidate_name": "Rashed Biswas"
+    },
+    "last_checked_timestamp": "2026-10-26 19:44:44"
   },
   {
     "country_name": "North Macedonia",
@@ -465,6 +467,7 @@
       "ec_no": "BA-I-2026-6000237",
       "ec_date": "13/Oct/2026",
       "candidate_name": "MD AMIR SOHEL"
-    }
+    },
+    "last_checked_timestamp": "2026-10-26 19:44:11"
   }
 ]
