@@ -95,9 +95,7 @@
         modalCountryBadge: document.getElementById('modalCountryBadge'),
         modalClearanceGrid: document.getElementById('modalClearanceGrid'),
         modalAgencyGrid: document.getElementById('modalAgencyGrid'),
-        modalVerifyUrlBtn: document.getElementById('modalVerifyUrlBtn'),
-        modalCopyUrlBtn: document.getElementById('modalCopyUrlBtn'),
-        modalDownloadJsonBtn: document.getElementById('modalDownloadJsonBtn')
+        modalVerifyUrlBtn: document.getElementById('modalVerifyUrlBtn')
     };
 
     // Helper: Format Number with commas
@@ -707,31 +705,6 @@
         state.activeCardModal = null;
     }
 
-    function copyVerificationUrl() {
-        if (!state.activeCardModal) return;
-        const url = state.activeCardModal.verification_url;
-        navigator.clipboard.writeText(url).then(() => {
-            showToast('Verification URL copied to clipboard!', 'success');
-        }).catch(() => {
-            showToast('Failed to copy URL.', 'error');
-        });
-    }
-
-    function downloadCardJson() {
-        if (!state.activeCardModal) return;
-        const card = state.activeCardModal;
-        const code = getCardCountryCode(card);
-        const y = getCardYear(card) || 'card';
-        const filename = `bmet_${code}_${y}_${card.serial_number}.json`;
-        const blob = new Blob([JSON.stringify(card, null, 2)], { type: 'application/json' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = filename;
-        a.click();
-        URL.revokeObjectURL(a.href);
-        showToast(`Saved ${filename}`, 'success');
-    }
-
     // ==========================================================================
     // View Switcher & Event Listeners
     // ==========================================================================
@@ -855,8 +828,6 @@
 
         // Modal actions
         elements.modalCloseBtn.addEventListener('click', closeCardModal);
-        elements.modalCopyUrlBtn.addEventListener('click', copyVerificationUrl);
-        elements.modalDownloadJsonBtn.addEventListener('click', downloadCardJson);
 
         elements.cardDetailModal.addEventListener('click', (e) => {
             if (e.target === elements.cardDetailModal) {
