@@ -9,7 +9,7 @@
     "total_valid_records_found": 6573,
     "total_invalid_or_missing_records": 57,
     "last_available_record_confirmed": true,
-    "errors_gaps_or_limitations": "No internal serial gaps; perfectly contiguous up to highest confirmed serial.",
+    "errors_gaps_or_limitations": "No internal serial gaps; perfectly contiguous from 6000001 up to highest confirmed serial.",
     "confirmation_evidence": {
       "consecutive_302_checks_past_highest": 50,
       "lookahead_probe_serials": [
@@ -48,7 +48,7 @@
     "total_valid_records_found": 8231,
     "total_invalid_or_missing_records": 62,
     "last_available_record_confirmed": true,
-    "errors_gaps_or_limitations": "Internal unissued/missing serials before highest (5): [6006568, 6006569, 6006570, 6006571, 6006572]",
+    "errors_gaps_or_limitations": "Internal unissued/missing serial numbers before highest (5): [6006568, 6006569, 6006570, 6006571, 6006572]",
     "confirmation_evidence": {
       "consecutive_302_checks_past_highest": 50,
       "lookahead_probe_serials": [
@@ -87,7 +87,7 @@
     "total_valid_records_found": 1531,
     "total_invalid_or_missing_records": 57,
     "last_available_record_confirmed": true,
-    "errors_gaps_or_limitations": "No internal serial gaps; perfectly contiguous up to highest confirmed serial.",
+    "errors_gaps_or_limitations": "No internal serial gaps; perfectly contiguous from 6000001 up to highest confirmed serial.",
     "confirmation_evidence": {
       "consecutive_302_checks_past_highest": 50,
       "lookahead_probe_serials": [
@@ -126,7 +126,7 @@
     "total_valid_records_found": 2387,
     "total_invalid_or_missing_records": 57,
     "last_available_record_confirmed": true,
-    "errors_gaps_or_limitations": "No internal serial gaps; perfectly contiguous up to highest confirmed serial.",
+    "errors_gaps_or_limitations": "No internal serial gaps; perfectly contiguous from 6000001 up to highest confirmed serial.",
     "confirmation_evidence": {
       "consecutive_302_checks_past_highest": 50,
       "lookahead_probe_serials": [
@@ -165,7 +165,7 @@
     "total_valid_records_found": 1462,
     "total_invalid_or_missing_records": 57,
     "last_available_record_confirmed": true,
-    "errors_gaps_or_limitations": "No internal serial gaps; perfectly contiguous up to highest confirmed serial.",
+    "errors_gaps_or_limitations": "No internal serial gaps; perfectly contiguous from 6000001 up to highest confirmed serial.",
     "confirmation_evidence": {
       "consecutive_302_checks_past_highest": 50,
       "lookahead_probe_serials": [
@@ -204,7 +204,7 @@
     "total_valid_records_found": 1094,
     "total_invalid_or_missing_records": 57,
     "last_available_record_confirmed": true,
-    "errors_gaps_or_limitations": "No internal serial gaps; perfectly contiguous up to highest confirmed serial.",
+    "errors_gaps_or_limitations": "No internal serial gaps; perfectly contiguous from 6000001 up to highest confirmed serial.",
     "confirmation_evidence": {
       "consecutive_302_checks_past_highest": 50,
       "lookahead_probe_serials": [
@@ -243,7 +243,7 @@
     "total_valid_records_found": 774,
     "total_invalid_or_missing_records": 57,
     "last_available_record_confirmed": true,
-    "errors_gaps_or_limitations": "No internal serial gaps; perfectly contiguous up to highest confirmed serial.",
+    "errors_gaps_or_limitations": "No internal serial gaps; perfectly contiguous from 6000001 up to highest confirmed serial.",
     "confirmation_evidence": {
       "consecutive_302_checks_past_highest": 50,
       "lookahead_probe_serials": [
@@ -282,7 +282,7 @@
     "total_valid_records_found": 606,
     "total_invalid_or_missing_records": 57,
     "last_available_record_confirmed": true,
-    "errors_gaps_or_limitations": "No internal serial gaps; perfectly contiguous up to highest confirmed serial.",
+    "errors_gaps_or_limitations": "No internal serial gaps; perfectly contiguous from 6000001 up to highest confirmed serial.",
     "confirmation_evidence": {
       "consecutive_302_checks_past_highest": 50,
       "lookahead_probe_serials": [
@@ -321,7 +321,7 @@
     "total_valid_records_found": 289,
     "total_invalid_or_missing_records": 57,
     "last_available_record_confirmed": true,
-    "errors_gaps_or_limitations": "No internal serial gaps; perfectly contiguous up to highest confirmed serial.",
+    "errors_gaps_or_limitations": "No internal serial gaps; perfectly contiguous from 6000001 up to highest confirmed serial.",
     "confirmation_evidence": {
       "consecutive_302_checks_past_highest": 50,
       "lookahead_probe_serials": [
@@ -360,7 +360,7 @@
     "total_valid_records_found": 2951,
     "total_invalid_or_missing_records": 57,
     "last_available_record_confirmed": true,
-    "errors_gaps_or_limitations": "No internal serial gaps; perfectly contiguous up to highest confirmed serial.",
+    "errors_gaps_or_limitations": "No internal serial gaps; perfectly contiguous from 6000001 up to highest confirmed serial.",
     "confirmation_evidence": {
       "consecutive_302_checks_past_highest": 50,
       "lookahead_probe_serials": [
@@ -393,12 +393,13 @@
     "country_name": "Bulgaria",
     "country_code": "BG",
     "output_file": "bulgaria_2026.json",
-    "starting_serial": 6000001,
-    "highest_confirmed_serial": 6000240,
-    "total_serials_checked": 297,
-    "total_valid_records": 240,
-    "total_invalid_or_missing": 57,
+    "starting_serial_number": 6000001,
+    "highest_confirmed_serial_number": 6000240,
+    "total_serial_numbers_checked": 297,
+    "total_valid_records_found": 240,
+    "total_invalid_or_missing_records": 57,
     "last_available_record_confirmed": true,
+    "errors_gaps_or_limitations": "No internal serial gaps; perfectly contiguous from 6000001 up to highest confirmed serial.",
     "confirmation_evidence": {
       "consecutive_302_checks_past_highest": 50,
       "lookahead_probe_serials": [
@@ -425,7 +426,45 @@
       "ec_no": "BG-I-2026-6000240",
       "ec_date": "19/Oct/2026",
       "candidate_name": "ABDULLAH AL MASUD"
+    }
+  },
+  {
+    "country_name": "Bosnia and Herzegovina",
+    "country_code": "BA",
+    "output_file": "bosnia_and_herzegovina_2026.json",
+    "starting_serial_number": 6000001,
+    "highest_confirmed_serial_number": 6000237,
+    "total_serial_numbers_checked": 294,
+    "total_valid_records_found": 237,
+    "total_invalid_or_missing_records": 57,
+    "last_available_record_confirmed": true,
+    "errors_gaps_or_limitations": "No internal serial gaps; perfectly contiguous from 6000001 up to highest confirmed serial.",
+    "confirmation_evidence": {
+      "consecutive_302_checks_past_highest": 50,
+      "lookahead_probe_serials": [
+        6000242,
+        6000247,
+        6000262,
+        6000287,
+        6000337,
+        6000437,
+        6000737
+      ],
+      "lookahead_probe_results": {
+        "6000242": "invalid",
+        "6000437": "invalid",
+        "6000262": "invalid",
+        "6000287": "invalid",
+        "6000737": "invalid",
+        "6000337": "invalid",
+        "6000247": "invalid"
+      },
+      "highest_record_issuance_date": "13/Oct/2026"
     },
-    "errors_gaps_or_limitations": "No internal serial gaps; perfectly contiguous up to highest confirmed serial."
+    "last_record_details": {
+      "ec_no": "BA-I-2026-6000237",
+      "ec_date": "13/Oct/2026",
+      "candidate_name": "MD AMIR SOHEL"
+    }
   }
 ]

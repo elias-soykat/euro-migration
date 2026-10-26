@@ -483,7 +483,8 @@ def main():
         
         # Check if already completed and file exists and has records
         if code in all_summaries and os.path.exists(out_file) and all_summaries[code].get("last_available_record_confirmed"):
-            print(f"Skipping {country_info['name']} ({code}) - already completed with {all_summaries[code]['total_valid_records_found']} records.", flush=True)
+            valid_cnt = all_summaries[code].get("total_valid_records_found", all_summaries[code].get("total_valid_records", 0))
+            print(f"Skipping {country_info['name']} ({code}) - already completed with {valid_cnt} records.", flush=True)
             continue
 
         process_country(country_info, all_summaries)
