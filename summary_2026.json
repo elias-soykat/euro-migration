@@ -1,0 +1,431 @@
+[
+  {
+    "country_name": "Portugal",
+    "country_code": "PT",
+    "output_file": "portugal_2026.json",
+    "starting_serial_number": 6000001,
+    "highest_confirmed_serial_number": 6006573,
+    "total_serial_numbers_checked": 6630,
+    "total_valid_records_found": 6573,
+    "total_invalid_or_missing_records": 57,
+    "last_available_record_confirmed": true,
+    "errors_gaps_or_limitations": "No internal serial gaps; perfectly contiguous up to highest confirmed serial.",
+    "confirmation_evidence": {
+      "consecutive_302_checks_past_highest": 50,
+      "lookahead_probe_serials": [
+        6006578,
+        6006583,
+        6006598,
+        6006623,
+        6006673,
+        6006773,
+        6007073
+      ],
+      "lookahead_probe_results": {
+        "6006578": "invalid",
+        "6006673": "invalid",
+        "6006623": "invalid",
+        "6006598": "invalid",
+        "6006773": "invalid",
+        "6006583": "invalid",
+        "6007073": "invalid"
+      },
+      "highest_record_issuance_date": "26/Oct/2026"
+    },
+    "last_record_details": {
+      "ec_no": "PT-I-2026-6006573",
+      "ec_date": "26/Oct/2026",
+      "candidate_name": "HRIDOY SHIL"
+    }
+  },
+  {
+    "country_name": "Italy",
+    "country_code": "IT",
+    "output_file": "italy_2026.json",
+    "starting_serial_number": 6000001,
+    "highest_confirmed_serial_number": 6008236,
+    "total_serial_numbers_checked": 8293,
+    "total_valid_records_found": 8231,
+    "total_invalid_or_missing_records": 62,
+    "last_available_record_confirmed": true,
+    "errors_gaps_or_limitations": "Internal unissued/missing serials before highest (5): [6006568, 6006569, 6006570, 6006571, 6006572]",
+    "confirmation_evidence": {
+      "consecutive_302_checks_past_highest": 50,
+      "lookahead_probe_serials": [
+        6008241,
+        6008246,
+        6008261,
+        6008286,
+        6008336,
+        6008436,
+        6008736
+      ],
+      "lookahead_probe_results": {
+        "6008261": "invalid",
+        "6008241": "invalid",
+        "6008286": "invalid",
+        "6008436": "invalid",
+        "6008336": "invalid",
+        "6008736": "invalid",
+        "6008246": "invalid"
+      },
+      "highest_record_issuance_date": "26/Oct/2026"
+    },
+    "last_record_details": {
+      "ec_no": "IT-I-2026-6008236",
+      "ec_date": "26/Oct/2026",
+      "candidate_name": "JAHID HASSAN"
+    }
+  },
+  {
+    "country_name": "Greece",
+    "country_code": "GR",
+    "output_file": "greece_2026.json",
+    "starting_serial_number": 6000001,
+    "highest_confirmed_serial_number": 6001531,
+    "total_serial_numbers_checked": 1588,
+    "total_valid_records_found": 1531,
+    "total_invalid_or_missing_records": 57,
+    "last_available_record_confirmed": true,
+    "errors_gaps_or_limitations": "No internal serial gaps; perfectly contiguous up to highest confirmed serial.",
+    "confirmation_evidence": {
+      "consecutive_302_checks_past_highest": 50,
+      "lookahead_probe_serials": [
+        6001536,
+        6001541,
+        6001556,
+        6001581,
+        6001631,
+        6001731,
+        6002031
+      ],
+      "lookahead_probe_results": {
+        "6002031": "invalid",
+        "6001731": "invalid",
+        "6001536": "invalid",
+        "6001631": "invalid",
+        "6001581": "invalid",
+        "6001541": "invalid",
+        "6001556": "invalid"
+      },
+      "highest_record_issuance_date": "25/Oct/2026"
+    },
+    "last_record_details": {
+      "ec_no": "GR-I-2026-6001531",
+      "ec_date": "25/Oct/2026",
+      "candidate_name": "MD RAFIQUL ISLAM"
+    }
+  },
+  {
+    "country_name": "Cyprus",
+    "country_code": "CY",
+    "output_file": "cyprus_2026.json",
+    "starting_serial_number": 6000001,
+    "highest_confirmed_serial_number": 6002387,
+    "total_serial_numbers_checked": 2444,
+    "total_valid_records_found": 2387,
+    "total_invalid_or_missing_records": 57,
+    "last_available_record_confirmed": true,
+    "errors_gaps_or_limitations": "No internal serial gaps; perfectly contiguous up to highest confirmed serial.",
+    "confirmation_evidence": {
+      "consecutive_302_checks_past_highest": 50,
+      "lookahead_probe_serials": [
+        6002392,
+        6002397,
+        6002412,
+        6002437,
+        6002487,
+        6002587,
+        6002887
+      ],
+      "lookahead_probe_results": {
+        "6002487": "invalid",
+        "6002437": "invalid",
+        "6002392": "invalid",
+        "6002887": "invalid",
+        "6002587": "invalid",
+        "6002412": "invalid",
+        "6002397": "invalid"
+      },
+      "highest_record_issuance_date": "19/Oct/2026"
+    },
+    "last_record_details": {
+      "ec_no": "CY-I-2026-6002387",
+      "ec_date": "19/Oct/2026",
+      "candidate_name": "MD ZIHAD HASAN JOY"
+    }
+  },
+  {
+    "country_name": "North Macedonia",
+    "country_code": "MK",
+    "output_file": "north_macedonia_2026.json",
+    "starting_serial_number": 6000001,
+    "highest_confirmed_serial_number": 6001462,
+    "total_serial_numbers_checked": 1519,
+    "total_valid_records_found": 1462,
+    "total_invalid_or_missing_records": 57,
+    "last_available_record_confirmed": true,
+    "errors_gaps_or_limitations": "No internal serial gaps; perfectly contiguous up to highest confirmed serial.",
+    "confirmation_evidence": {
+      "consecutive_302_checks_past_highest": 50,
+      "lookahead_probe_serials": [
+        6001467,
+        6001472,
+        6001487,
+        6001512,
+        6001562,
+        6001662,
+        6001962
+      ],
+      "lookahead_probe_results": {
+        "6001467": "invalid",
+        "6001562": "invalid",
+        "6001487": "invalid",
+        "6001962": "invalid",
+        "6001662": "invalid",
+        "6001472": "invalid",
+        "6001512": "invalid"
+      },
+      "highest_record_issuance_date": "20/Oct/2026"
+    },
+    "last_record_details": {
+      "ec_no": "MK-I-2026-6001462",
+      "ec_date": "20/Oct/2026",
+      "candidate_name": "SANJIDA KHATUN"
+    }
+  },
+  {
+    "country_name": "Romania",
+    "country_code": "RO",
+    "output_file": "romania_2026.json",
+    "starting_serial_number": 6000001,
+    "highest_confirmed_serial_number": 6001094,
+    "total_serial_numbers_checked": 1151,
+    "total_valid_records_found": 1094,
+    "total_invalid_or_missing_records": 57,
+    "last_available_record_confirmed": true,
+    "errors_gaps_or_limitations": "No internal serial gaps; perfectly contiguous up to highest confirmed serial.",
+    "confirmation_evidence": {
+      "consecutive_302_checks_past_highest": 50,
+      "lookahead_probe_serials": [
+        6001099,
+        6001104,
+        6001119,
+        6001144,
+        6001194,
+        6001294,
+        6001594
+      ],
+      "lookahead_probe_results": {
+        "6001294": "invalid",
+        "6001194": "invalid",
+        "6001099": "invalid",
+        "6001119": "invalid",
+        "6001104": "invalid",
+        "6001144": "invalid",
+        "6001594": "invalid"
+      },
+      "highest_record_issuance_date": "25/Oct/2026"
+    },
+    "last_record_details": {
+      "ec_no": "RO-I-2026-6001094",
+      "ec_date": "25/Oct/2026",
+      "candidate_name": "SHIHAB ALAM SHIPU"
+    }
+  },
+  {
+    "country_name": "Moldova",
+    "country_code": "MD",
+    "output_file": "moldova_2026.json",
+    "starting_serial_number": 6000001,
+    "highest_confirmed_serial_number": 6000774,
+    "total_serial_numbers_checked": 831,
+    "total_valid_records_found": 774,
+    "total_invalid_or_missing_records": 57,
+    "last_available_record_confirmed": true,
+    "errors_gaps_or_limitations": "No internal serial gaps; perfectly contiguous up to highest confirmed serial.",
+    "confirmation_evidence": {
+      "consecutive_302_checks_past_highest": 50,
+      "lookahead_probe_serials": [
+        6000779,
+        6000784,
+        6000799,
+        6000824,
+        6000874,
+        6000974,
+        6001274
+      ],
+      "lookahead_probe_results": {
+        "6001274": "invalid",
+        "6000974": "invalid",
+        "6000784": "invalid",
+        "6000779": "invalid",
+        "6000874": "invalid",
+        "6000799": "invalid",
+        "6000824": "invalid"
+      },
+      "highest_record_issuance_date": "17/Oct/2026"
+    },
+    "last_record_details": {
+      "ec_no": "MD-I-2026-6000774",
+      "ec_date": "17/Oct/2026",
+      "candidate_name": "MD RAKIBUL ISLAM"
+    }
+  },
+  {
+    "country_name": "Malta",
+    "country_code": "MT",
+    "output_file": "malta_2026.json",
+    "starting_serial_number": 6000001,
+    "highest_confirmed_serial_number": 6000606,
+    "total_serial_numbers_checked": 663,
+    "total_valid_records_found": 606,
+    "total_invalid_or_missing_records": 57,
+    "last_available_record_confirmed": true,
+    "errors_gaps_or_limitations": "No internal serial gaps; perfectly contiguous up to highest confirmed serial.",
+    "confirmation_evidence": {
+      "consecutive_302_checks_past_highest": 50,
+      "lookahead_probe_serials": [
+        6000611,
+        6000616,
+        6000631,
+        6000656,
+        6000706,
+        6000806,
+        6001106
+      ],
+      "lookahead_probe_results": {
+        "6000706": "invalid",
+        "6000616": "invalid",
+        "6000656": "invalid",
+        "6000611": "invalid",
+        "6001106": "invalid",
+        "6000806": "invalid",
+        "6000631": "invalid"
+      },
+      "highest_record_issuance_date": "18/Oct/2026"
+    },
+    "last_record_details": {
+      "ec_no": "MT-I-2026-6000606",
+      "ec_date": "18/Oct/2026",
+      "candidate_name": "ABDULLAH AL SAHED EMON"
+    }
+  },
+  {
+    "country_name": "Slovenia",
+    "country_code": "SI",
+    "output_file": "slovenia_2026.json",
+    "starting_serial_number": 6000001,
+    "highest_confirmed_serial_number": 6000289,
+    "total_serial_numbers_checked": 346,
+    "total_valid_records_found": 289,
+    "total_invalid_or_missing_records": 57,
+    "last_available_record_confirmed": true,
+    "errors_gaps_or_limitations": "No internal serial gaps; perfectly contiguous up to highest confirmed serial.",
+    "confirmation_evidence": {
+      "consecutive_302_checks_past_highest": 50,
+      "lookahead_probe_serials": [
+        6000294,
+        6000299,
+        6000314,
+        6000339,
+        6000389,
+        6000489,
+        6000789
+      ],
+      "lookahead_probe_results": {
+        "6000489": "invalid",
+        "6000314": "invalid",
+        "6000294": "invalid",
+        "6000389": "invalid",
+        "6000789": "invalid",
+        "6000339": "invalid",
+        "6000299": "invalid"
+      },
+      "highest_record_issuance_date": "26/Oct/2026"
+    },
+    "last_record_details": {
+      "ec_no": "SI-I-2026-6000289",
+      "ec_date": "26/Oct/2026",
+      "candidate_name": "ABU SATTAR"
+    }
+  },
+  {
+    "country_name": "Serbia",
+    "country_code": "RS",
+    "output_file": "serbia_2026.json",
+    "starting_serial_number": 6000001,
+    "highest_confirmed_serial_number": 6002951,
+    "total_serial_numbers_checked": 3008,
+    "total_valid_records_found": 2951,
+    "total_invalid_or_missing_records": 57,
+    "last_available_record_confirmed": true,
+    "errors_gaps_or_limitations": "No internal serial gaps; perfectly contiguous up to highest confirmed serial.",
+    "confirmation_evidence": {
+      "consecutive_302_checks_past_highest": 50,
+      "lookahead_probe_serials": [
+        6002956,
+        6002961,
+        6002976,
+        6003001,
+        6003051,
+        6003151,
+        6003451
+      ],
+      "lookahead_probe_results": {
+        "6003001": "invalid",
+        "6002961": "invalid",
+        "6002956": "invalid",
+        "6003451": "invalid",
+        "6003151": "invalid",
+        "6003051": "invalid",
+        "6002976": "invalid"
+      },
+      "highest_record_issuance_date": "03/Sep/2026"
+    },
+    "last_record_details": {
+      "ec_no": "RS-I-2026-6002951",
+      "ec_date": "03/Sep/2026",
+      "candidate_name": "NAZIM UDDIN"
+    }
+  },
+  {
+    "country_name": "Bulgaria",
+    "country_code": "BG",
+    "output_file": "bulgaria_2026.json",
+    "starting_serial": 6000001,
+    "highest_confirmed_serial": 6000240,
+    "total_serials_checked": 297,
+    "total_valid_records": 240,
+    "total_invalid_or_missing": 57,
+    "last_available_record_confirmed": true,
+    "confirmation_evidence": {
+      "consecutive_302_checks_past_highest": 50,
+      "lookahead_probe_serials": [
+        6000245,
+        6000250,
+        6000265,
+        6000290,
+        6000340,
+        6000440,
+        6000740
+      ],
+      "lookahead_probe_results": {
+        "6000340": "invalid",
+        "6000740": "invalid",
+        "6000245": "invalid",
+        "6000440": "invalid",
+        "6000265": "invalid",
+        "6000290": "invalid",
+        "6000250": "invalid"
+      },
+      "highest_record_issuance_date": "19/Oct/2026"
+    },
+    "last_record_details": {
+      "ec_no": "BG-I-2026-6000240",
+      "ec_date": "19/Oct/2026",
+      "candidate_name": "ABDULLAH AL MASUD"
+    },
+    "errors_gaps_or_limitations": "No internal serial gaps; perfectly contiguous up to highest confirmed serial."
+  }
+]
