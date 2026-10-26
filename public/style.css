@@ -1,5 +1,5 @@
 /* ==========================================================================
-   BMET Clearance Card Directory — 2026 European Migration
+   BMET Clearance Card Directory — European Migration Verification Portal
    Design System: Deep Slate / Modern Glassmorphism & High-Contrast Typography
    ========================================================================== */
 
@@ -946,6 +946,22 @@ body {
     background: var(--bg-surface);
 }
 
+.card-avatar-pill {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.2) 0%, rgba(2, 132, 199, 0.3) 100%);
+    color: var(--text-accent);
+    border: 1.5px solid var(--border-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
 .card-item-main-info {
     flex: 1;
     overflow: hidden;
@@ -1206,6 +1222,22 @@ body {
     flex-shrink: 0;
 }
 
+.ecard-avatar-wrap {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 800;
+    flex-shrink: 0;
+    border: 3px solid rgba(56, 189, 248, 0.5);
+    box-shadow: 0 4px 14px rgba(14, 165, 233, 0.3);
+}
+
 .ecard-photo {
     width: 100%;
     height: 100%;
@@ -1444,3 +1476,75 @@ body {
         width: 100%;
     }
 }
+
+/* ==========================================================================
+   Year Selector & Year Badge Styles
+   ========================================================================== */
+
+.year-filter-pill-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.35rem 0.65rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    transition: var(--transition);
+}
+
+.year-filter-pill-wrap:hover,
+.year-filter-pill-wrap:focus-within {
+    background: rgba(255, 255, 255, 0.09);
+    border-color: var(--border-focus);
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.2);
+}
+
+.year-pill-icon {
+    font-size: 0.85rem;
+    user-select: none;
+}
+
+.global-year-select {
+    background: transparent;
+    border: none;
+    color: var(--text-main);
+    font-family: var(--font-sans);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+    padding-right: 0.25rem;
+}
+
+.global-year-select option {
+    background-color: #0f172a;
+    color: var(--text-main);
+}
+
+.year-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.18rem 0.5rem;
+    font-size: 0.74rem;
+    font-weight: 600;
+    font-family: var(--font-mono);
+    border-radius: 4px;
+    background: rgba(56, 189, 248, 0.12);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+.grid-year-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.15rem 0.45rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    font-family: var(--font-mono);
+    border-radius: 4px;
+    background: rgba(56, 189, 248, 0.12);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    margin-left: 0.4rem;
+}
+

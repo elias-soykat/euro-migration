@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 """
-BMET E-Card Data Collector for 2026 European Countries
+BMET E-Card Data Collector
 Systematically retrieves and validates BMET e-card records from RAIMS (raims.oep.gov.bd).
+Fully year-independent, supports CLI --year (defaults to current calendar year).
 """
 
 import os
 import sys
 import time
 import json
+import argparse
+import datetime
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import requests
@@ -17,82 +20,81 @@ COUNTRIES = [
     {
         "name": "Portugal",
         "code": "PT",
-        "filename": "portugal_2026.json",
+        "slug": "portugal",
         "known_max": 6006573
     },
     {
         "name": "Italy",
         "code": "IT",
-        "filename": "italy_2026.json",
+        "slug": "italy",
         "known_max": 6008235
     },
     {
         "name": "Greece",
         "code": "GR",
-        "filename": "greece_2026.json",
+        "slug": "greece",
         "known_max": 6001531
     },
     {
         "name": "Cyprus",
         "code": "CY",
-        "filename": "cyprus_2026.json",
+        "slug": "cyprus",
         "known_max": 6002387
     },
     {
         "name": "North Macedonia",
         "code": "MK",
-        "filename": "north_macedonia_2026.json",
+        "slug": "north_macedonia",
         "known_max": 6001462
     },
     {
         "name": "Romania",
         "code": "RO",
-        "filename": "romania_2026.json",
+        "slug": "romania",
         "known_max": 6001094
     },
     {
         "name": "Moldova",
         "code": "MD",
-        "filename": "moldova_2026.json",
+        "slug": "moldova",
         "known_max": 6000774
     },
     {
         "name": "Malta",
         "code": "MT",
-        "filename": "malta_2026.json",
+        "slug": "malta",
         "known_max": 6000606
     },
     {
         "name": "Slovenia",
         "code": "SI",
-        "filename": "slovenia_2026.json",
+        "slug": "slovenia",
         "known_max": 6000289
     },
     {
         "name": "Serbia",
         "code": "RS",
-        "filename": "serbia_2026.json",
+        "slug": "serbia",
         "known_max": 6002951
     },
     {
         "name": "Bulgaria",
         "code": "BG",
-        "filename": "bulgaria_2026.json",
+        "slug": "bulgaria",
         "known_max": 6000240
     },
     {
         "name": "Bosnia and Herzegovina",
         "code": "BA",
-        "filename": "bosnia_and_herzegovina_2026.json",
+        "slug": "bosnia_and_herzegovina",
         "known_max": 6000237
     }
 ]
 
-WORKSPACE_DIR = "/home/elias/elias/euro-migration"
-SUMMARY_FILE = os.path.join(WORKSPACE_DIR, "summary_2026.json")
+WORKSPACE_DIR = os.path.dirname(os.path.abspath(__file__))
 START_SERIAL = 6000001
 MAX_WORKERS = 20
-POST_MAX_CHECK_COUNT = 50  # consecutive 302 checks past max confirmed serial
+POST_MAX_CHECK_COUNT = 50
 LOOKAHEAD_PROBES = [5, 10, 25, 50, 100, 200, 500]
 
 thread_local = threading.local()
@@ -113,7 +115,7 @@ def get_session():
         s.mount("https://", adapter)
         s.mount("http://", adapter)
         s.headers.update({
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.9"
         })
@@ -172,7 +174,7 @@ def parse_card_html(html, url, country, country_code, serial, year):
         if not title_div:
             continue
         sec_title = clean_text(title_div.get_text()).lower()
-
+        
         table = wrap.find("table")
         if table:
             row_dict = {}
@@ -181,7 +183,7 @@ def parse_card_html(html, url, country, country_code, serial, year):
                 td = tr.find("td")
                 if th and td:
                     row_dict[clean_text(th.get_text()).rstrip(":").strip()] = clean_text(td.get_text())
-
+            
             if "agency" in sec_title:
                 section_tables["agency"] = row_dict
             elif "registration" in sec_title:
@@ -201,67 +203,42 @@ def parse_card_html(html, url, country, country_code, serial, year):
             if v.strip() not in prev_passports:
                 prev_passports.append(v.strip())
 
-    bm = section_tables.get("bmet", {})
     ra = section_tables.get("agency", {})
-    pa = section_tables.get("address", {})
-    ec = section_tables.get("emergency", {})
 
     record = {
-        "country": country,
-        "country_code": country_code,
-        "year": str(year),
         "serial_number": int(serial),
         "ec_no": ec_no,
         "ec_date": ec_date,
         "verification_url": url,
-        "photo_url": photo_url,
-        "candidate_name": candidate_name,
-        "birth_date": cl_table.get("Birth Date", bm.get("Birth Date", "")).strip(),
-        "gender": bm.get("Gender", "").strip(),
-        "blood_group": cl_table.get("Blood Group", "").strip(),
-        "nid": str(bm.get("NID", "")).strip(),
-        "bmet_no": bm.get("BMET No", "").strip(),
-        "passport": {
-            "passport_no": cl_passport or passports_obj.get("Passport No 1", "").strip(),
-            "issue_date": cl_table.get("Passport Issue Date", "").strip(),
-            "expire_date": cl_table.get("Passport Expire Date", "").strip(),
-            "previous_passports": prev_passports
-        },
-        "visa": {
-            "visa_no": str(cl_table.get("Visa No", "")).strip(),
-            "issue_date": cl_table.get("Visa Issue Date", "").strip(),
-            "expire_date": cl_table.get("Visa Expire Date", "").strip()
-        },
-        "employment": {
-            "employer": cl_table.get("Employer", "").strip(),
-            "referral_no": str(cl_table.get("Referral No", "")).strip()
-        },
-        "recruiting_agency": {
-            "name": ra.get("Name", "").strip(),
-            "license_no": str(ra.get("License No", "")).strip(),
-            "phone": str(ra.get("Phone", "")).strip()
-        },
-        "permanent_address": {
-            "house_vill_road": pa.get("House/Vill/Road", "").strip(),
-            "post_office": pa.get("Post Office", "").strip(),
-            "police_station": pa.get("Police Station", "").strip(),
-            "upazila": pa.get("Upazila", "").strip(),
-            "district": pa.get("District", "").strip(),
-            "division": pa.get("Division", "").strip()
-        },
-        "emergency_contact": {
-            "name": ec.get("Name", "").strip(),
-            "relation": ec.get("Relation", "").strip(),
-            "mobile": str(ec.get("Mobile", "")).strip(),
-            "address": ec.get("Address", "").strip()
-        }
+        "candidate_name": candidate_name
     }
+
+    employer = cl_table.get("Employer", "").strip()
+    if employer:
+        record["employment"] = {
+            "employer": employer
+        }
+
+    agency = {}
+    ra_name = ra.get("Name", "").strip()
+    ra_lic = str(ra.get("License No", "")).strip()
+    ra_phone = str(ra.get("Phone", "")).strip()
+    if ra_name:
+        agency["name"] = ra_name
+    if ra_lic:
+        agency["license_no"] = ra_lic
+    if ra_phone:
+        agency["phone"] = ra_phone
+
+    if agency:
+        record["recruiting_agency"] = agency
+
     return record
 
-def fetch_single_card(country_info, serial):
+def fetch_single_card(country_info, serial, year):
     code = country_info["code"]
     country = country_info["name"]
-    url = f"https://raims.oep.gov.bd/ec-card/verify/{code}-I-2026-{serial}"
+    url = f"https://raims.oep.gov.bd/ec-card/verify/{code}-I-{year}-{serial}"
     s = get_session()
     s.cookies.clear()
 
@@ -270,7 +247,7 @@ def fetch_single_card(country_info, serial):
         try:
             r = s.get(url, allow_redirects=False, timeout=12)
             if r.status_code == 200:
-                card_data = parse_card_html(r.text, url, country, code, serial, "2026")
+                card_data = parse_card_html(r.text, url, country, code, serial, year)
                 return {
                     "serial": serial,
                     "status": "valid",
@@ -299,7 +276,7 @@ def fetch_single_card(country_info, serial):
                         "data": None,
                         "error": f"HTTP {r.status_code}"
                     }
-                time.sleep(attempt * 0.5)
+                time.sleep(0.5 * attempt)
         except Exception as e:
             if attempt == max_attempts:
                 return {
@@ -308,35 +285,29 @@ def fetch_single_card(country_info, serial):
                     "data": None,
                     "error": str(e)
                 }
-            time.sleep(attempt * 0.5)
+            time.sleep(0.5 * attempt)
 
-    return {
-        "serial": serial,
-        "status": "error",
-        "data": None,
-        "error": "Exhausted retries"
-    }
-
-def update_summary_file(all_summaries):
-    ordered_list = []
+def update_summary_file(all_summaries, summary_file):
+    summary_list = []
     for c in COUNTRIES:
-        if c["code"] in all_summaries:
-            ordered_list.append(all_summaries[c["code"]])
+        code = c["code"]
+        if code in all_summaries:
+            summary_list.append(all_summaries[code])
 
-    tmp_file = SUMMARY_FILE + ".tmp"
-    with open(tmp_file, "w", encoding="utf-8") as f:
-        json.dump(ordered_list, f, indent=2, ensure_ascii=False)
-    os.replace(tmp_file, SUMMARY_FILE)
+    tmp = summary_file + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(summary_list, f, indent=2, ensure_ascii=False)
+    os.replace(tmp, summary_file)
 
-def process_country(country_info, all_summaries):
+def process_country(country_info, all_summaries, year, summary_file):
     country_name = country_info["name"]
     code = country_info["code"]
-    filename = country_info["filename"]
-    known_max = country_info.get("known_max", START_SERIAL)
+    filename = f"{country_info['slug']}_{year}.json"
+    known_max = country_info.get("known_max", START_SERIAL) if year == "2026" else START_SERIAL
     out_path = os.path.join(WORKSPACE_DIR, filename)
 
     print(f"\n=======================================================", flush=True)
-    print(f"Starting collection for: {country_name} ({code})", flush=True)
+    print(f"Starting collection for: {country_name} ({code}) [Year: {year}]", flush=True)
     print(f"Start serial: {START_SERIAL} | Expected max approx: {known_max}", flush=True)
     print(f"Target file: {filename}", flush=True)
     print(f"=======================================================", flush=True)
@@ -361,7 +332,7 @@ def process_country(country_info, all_summaries):
         batch_results = []
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
             future_to_sn = {
-                executor.submit(fetch_single_card, country_info, sn): sn 
+                executor.submit(fetch_single_card, country_info, sn, year): sn 
                 for sn in serials_to_fetch
             }
             for future in as_completed(future_to_sn):
@@ -414,7 +385,7 @@ def process_country(country_info, all_summaries):
 
     with ThreadPoolExecutor(max_workers=min(len(probe_serials), MAX_WORKERS)) as executor:
         future_to_p = {
-            executor.submit(fetch_single_card, country_info, p): p 
+            executor.submit(fetch_single_card, country_info, p, year): p 
             for p in probe_serials
         }
         for future in as_completed(future_to_p):
@@ -439,10 +410,11 @@ def process_country(country_info, all_summaries):
 
     seen_sn = set()
     unique_valid_records = []
-    for r in sorted(valid_records, key=lambda x: x["serial_number"]):
+    for r in valid_records:
         if r["serial_number"] not in seen_sn:
             seen_sn.add(r["serial_number"])
             unique_valid_records.append(r)
+    unique_valid_records.sort(key=lambda x: x["serial_number"])
 
     tmp_out = out_path + ".tmp"
     with open(tmp_out, "w", encoding="utf-8") as f:
@@ -484,16 +456,16 @@ def process_country(country_info, all_summaries):
     }
 
     all_summaries[code] = country_summary
-    update_summary_file(all_summaries)
+    update_summary_file(all_summaries, summary_file)
 
     print(f"[{code}] Finished successfully! Highest: {highest_confirmed} | Valid count: {len(unique_valid_records)}", flush=True)
     return country_summary
 
-def load_existing_summaries():
+def load_existing_summaries(summary_file):
     all_summaries = {}
-    if os.path.exists(SUMMARY_FILE):
+    if os.path.exists(summary_file):
         try:
-            with open(SUMMARY_FILE, "r", encoding="utf-8") as f:
+            with open(summary_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 if isinstance(data, list):
                     for item in data:
@@ -505,26 +477,32 @@ def load_existing_summaries():
     return all_summaries
 
 def main():
+    parser = argparse.ArgumentParser(description="BMET E-Card Data Collector")
+    parser.add_argument("--year", type=str, default=str(datetime.datetime.now().year), help="Target year to collect (default: current year)")
+    args = parser.parse_args()
+
+    year = args.year
+    summary_file = os.path.join(WORKSPACE_DIR, f"summary_{year}.json")
     os.makedirs(WORKSPACE_DIR, exist_ok=True)
-    all_summaries = load_existing_summaries()
+    all_summaries = load_existing_summaries(summary_file)
 
     start_time = time.time()
     for country_info in COUNTRIES:
         code = country_info["code"]
-        out_file = os.path.join(WORKSPACE_DIR, country_info["filename"])
+        filename = f"{country_info['slug']}_{year}.json"
+        out_file = os.path.join(WORKSPACE_DIR, filename)
         
-        # Check if already completed and file exists and has records
         if code in all_summaries and os.path.exists(out_file) and all_summaries[code].get("last_available_record_confirmed"):
             valid_cnt = all_summaries[code].get("total_valid_records_found", all_summaries[code].get("total_valid_records", 0))
             print(f"Skipping {country_info['name']} ({code}) - already completed with {valid_cnt} records.", flush=True)
             continue
 
-        process_country(country_info, all_summaries)
+        process_country(country_info, all_summaries, year, summary_file)
 
     elapsed = round(time.time() - start_time, 2)
     print(f"\n=======================================================", flush=True)
-    print(f"ALL 12 COUNTRIES COMPLETED IN {elapsed}s!", flush=True)
-    print(f"Summary written to {SUMMARY_FILE}", flush=True)
+    print(f"ALL 12 COUNTRIES COMPLETED IN {elapsed}s FOR YEAR {year}!", flush=True)
+    print(f"Summary written to {summary_file}", flush=True)
     print(f"=======================================================", flush=True)
 
 if __name__ == "__main__":

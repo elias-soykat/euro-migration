@@ -2,6 +2,7 @@
 """
 BMET E-Card Directory Server
 Backend API and Static Server for the European Migration BMET Clearance Cards Directory.
+Fully year-independent and future-proof (supporting 2026, 2027, 2028, and beyond).
 """
 
 import os
@@ -16,43 +17,82 @@ from bs4 import BeautifulSoup
 
 WORKSPACE_DIR = os.path.dirname(os.path.abspath(__file__))
 PUBLIC_DIR = os.path.join(WORKSPACE_DIR, "public")
-SUMMARY_FILE = os.path.join(WORKSPACE_DIR, "summary_2026.json")
 
-# In-memory dataset cache: code -> {"mtime": float, "data": list}
-DATASET_CACHE = {}
-
+# Country definitions with ISO codes, display names, flags, and file slug prefixes
 COUNTRY_META = {
-    "PT": {"name": "Portugal", "flag": "🇵🇹", "file": "portugal_2026.json"},
-    "IT": {"name": "Italy", "flag": "🇮🇹", "file": "italy_2026.json"},
-    "GR": {"name": "Greece", "flag": "🇬🇷", "file": "greece_2026.json"},
-    "CY": {"name": "Cyprus", "flag": "🇨🇾", "file": "cyprus_2026.json"},
-    "MK": {"name": "North Macedonia", "flag": "🇲🇰", "file": "north_macedonia_2026.json"},
-    "RO": {"name": "Romania", "flag": "🇷🇴", "file": "romania_2026.json"},
-    "MD": {"name": "Moldova", "flag": "🇲🇩", "file": "moldova_2026.json"},
-    "MT": {"name": "Malta", "flag": "🇲🇹", "file": "malta_2026.json"},
-    "SI": {"name": "Slovenia", "flag": "🇸🇮", "file": "slovenia_2026.json"},
-    "RS": {"name": "Serbia", "flag": "🇷🇸", "file": "serbia_2026.json"},
-    "BG": {"name": "Bulgaria", "flag": "🇧🇬", "file": "bulgaria_2026.json"},
-    "BA": {"name": "Bosnia and Herzegovina", "flag": "🇧🇦", "file": "bosnia_and_herzegovina_2026.json"}
+    "PT": {"name": "Portugal", "flag": "🇵🇹", "slug": "portugal"},
+    "IT": {"name": "Italy", "flag": "🇮🇹", "slug": "italy"},
+    "GR": {"name": "Greece", "flag": "🇬🇷", "slug": "greece"},
+    "CY": {"name": "Cyprus", "flag": "🇨🇾", "slug": "cyprus"},
+    "MK": {"name": "North Macedonia", "flag": "🇲🇰", "slug": "north_macedonia"},
+    "RO": {"name": "Romania", "flag": "🇷🇴", "slug": "romania"},
+    "MD": {"name": "Moldova", "flag": "🇲🇩", "slug": "moldova"},
+    "MT": {"name": "Malta", "flag": "🇲🇹", "slug": "malta"},
+    "SI": {"name": "Slovenia", "flag": "🇸🇮", "slug": "slovenia"},
+    "RS": {"name": "Serbia", "flag": "🇷🇸", "slug": "serbia"},
+    "BG": {"name": "Bulgaria", "flag": "🇧🇬", "slug": "bulgaria"},
+    "BA": {"name": "Bosnia and Herzegovina", "flag": "🇧🇦", "slug": "bosnia_and_herzegovina"}
 }
+
+# In-memory dataset cache: (code, year) -> {"mtime": float, "data": list}
+DATASET_CACHE = {}
 
 def clean_text(text):
     if not text:
         return ""
     return " ".join(text.split())
 
+def discover_years():
+    """
+    Dynamically discover all years present in the workspace dataset files
+    matching <country_slug>_<year>.json or summary_<year>.json,
+    and always include the current calendar year.
+    Returns a sorted list of unique year strings, e.g. ['2026', '2027'].
+    """
+    years = set()
+    try:
+        for fname in os.listdir(WORKSPACE_DIR):
+            if fname.endswith(".json"):
+                base = fname[:-5]
+                parts = base.rsplit("_", 1)
+                if len(parts) == 2 and parts[1].isdigit() and len(parts[1]) == 4:
+                    years.add(parts[1])
+    except Exception as e:
+        print(f"Error scanning workspace years: {e}")
+
+    curr_year = str(datetime.datetime.now().year)
+    years.add(curr_year)
+    return sorted(list(years))
+
+def get_country_filepath(code, year):
+    meta = COUNTRY_META.get(code.upper())
+    if not meta:
+        return None
+    return os.path.join(WORKSPACE_DIR, f"{meta['slug']}_{year}.json")
+
+def get_summary_filepath(year):
+    return os.path.join(WORKSPACE_DIR, f"summary_{year}.json")
+
+def get_record_year(r, default_year=""):
+    if r.get("year"):
+        return str(r["year"])
+    ec = r.get("ec_no", "")
+    parts = ec.split("-")
+    if len(parts) >= 3 and parts[2].isdigit():
+        return parts[2]
+    url = r.get("verification_url", "")
+    if url:
+        u_parts = url.split("/")[-1].split("-")
+        if len(u_parts) >= 3 and u_parts[2].isdigit():
+            return u_parts[2]
+    return str(default_year)
+
 def parse_card_html(html, url, country, country_code, serial, year):
     soup = BeautifulSoup(html, "html.parser")
     
-    # Extract candidate name and photo
     candidate_name = ""
-    photo_url = ""
     ec_no = f"{country_code}-I-{year}-{serial}"
     ec_date = ""
-
-    pic_div = soup.find("div", id="pic-wrap")
-    if pic_div and pic_div.find("img"):
-        photo_url = pic_div.find("img").get("src", "").strip()
 
     info_board = soup.find("div", id="info-board")
     if info_board:
@@ -68,7 +108,6 @@ def parse_card_html(html, url, country, country_code, serial, year):
             elif lbl == "EC Date":
                 ec_date = val
 
-    # Tables extraction
     cl_table = {}
     agency_board = soup.find("div", id="agency-board")
     if agency_board and agency_board.find("table"):
@@ -102,133 +141,161 @@ def parse_card_html(html, url, country, country_code, serial, year):
             
             if "agency" in sec_title:
                 section_tables["agency"] = row_dict
-            elif "registration" in sec_title:
-                section_tables["bmet"] = row_dict
-            elif "passports" in sec_title:
-                section_tables["passports"] = row_dict
-            elif "address" in sec_title:
-                section_tables["address"] = row_dict
-            elif "emergency" in sec_title:
-                section_tables["emergency"] = row_dict
 
-    # Extract historical previous passports if any
-    passports_obj = section_tables.get("passports", {})
-    cl_passport = cl_table.get("Passport No", "").strip()
-    prev_passports = []
-    for k, v in passports_obj.items():
-        if k != "Name" and v and v.strip() != cl_passport:
-            if v.strip() not in prev_passports:
-                prev_passports.append(v.strip())
-
-    bm = section_tables.get("bmet", {})
     ra = section_tables.get("agency", {})
-    pa = section_tables.get("address", {})
-    ec = section_tables.get("emergency", {})
 
     record = {
-        "country": country,
-        "country_code": country_code,
-        "year": str(year),
         "serial_number": int(serial),
         "ec_no": ec_no,
         "ec_date": ec_date,
         "verification_url": url,
-        "photo_url": photo_url,
-        "candidate_name": candidate_name,
-        "birth_date": cl_table.get("Birth Date", bm.get("Birth Date", "")).strip(),
-        "gender": bm.get("Gender", "").strip(),
-        "blood_group": cl_table.get("Blood Group", "").strip(),
-        "nid": str(bm.get("NID", "")).strip(),
-        "bmet_no": bm.get("BMET No", "").strip(),
-        "passport": {
-            "passport_no": cl_passport or passports_obj.get("Passport No 1", "").strip(),
-            "issue_date": cl_table.get("Passport Issue Date", "").strip(),
-            "expire_date": cl_table.get("Passport Expire Date", "").strip(),
-            "previous_passports": prev_passports
-        },
-        "visa": {
-            "visa_no": str(cl_table.get("Visa No", "")).strip(),
-            "issue_date": cl_table.get("Visa Issue Date", "").strip(),
-            "expire_date": cl_table.get("Visa Expire Date", "").strip()
-        },
-        "employment": {
-            "employer": cl_table.get("Employer", "").strip(),
-            "referral_no": str(cl_table.get("Referral No", "")).strip()
-        },
-        "recruiting_agency": {
-            "name": ra.get("Name", "").strip(),
-            "license_no": str(ra.get("License No", "")).strip(),
-            "phone": str(ra.get("Phone", "")).strip()
-        },
-        "permanent_address": {
-            "house_vill_road": pa.get("House/Vill/Road", "").strip(),
-            "post_office": pa.get("Post Office", "").strip(),
-            "police_station": pa.get("Police Station", "").strip(),
-            "upazila": pa.get("Upazila", "").strip(),
-            "district": pa.get("District", "").strip(),
-            "division": pa.get("Division", "").strip()
-        },
-        "emergency_contact": {
-            "name": ec.get("Name", "").strip(),
-            "relation": ec.get("Relation", "").strip(),
-            "mobile": str(ec.get("Mobile", "")).strip(),
-            "address": ec.get("Address", "").strip()
-        }
+        "candidate_name": candidate_name
     }
+
+    employer = cl_table.get("Employer", "").strip()
+    if employer:
+        record["employment"] = {
+            "employer": employer
+        }
+
+    agency = {}
+    ra_name = ra.get("Name", "").strip()
+    ra_lic = str(ra.get("License No", "")).strip()
+    ra_phone = str(ra.get("Phone", "")).strip()
+    if ra_name:
+        agency["name"] = ra_name
+    if ra_lic:
+        agency["license_no"] = ra_lic
+    if ra_phone:
+        agency["phone"] = ra_phone
+
+    if agency:
+        record["recruiting_agency"] = agency
+
     return record
 
-def get_country_records(code):
+def get_country_records_for_year(code, year):
     code = code.upper()
-    if code not in COUNTRY_META:
-        return []
-
-    filepath = os.path.join(WORKSPACE_DIR, COUNTRY_META[code]["file"])
-    if not os.path.exists(filepath):
+    filepath = get_country_filepath(code, year)
+    if not filepath or not os.path.exists(filepath):
         return []
 
     mtime = os.path.getmtime(filepath)
-    if code in DATASET_CACHE and DATASET_CACHE[code]["mtime"] == mtime:
-        return DATASET_CACHE[code]["data"]
+    cache_key = (code, str(year))
+    if cache_key in DATASET_CACHE and DATASET_CACHE[cache_key]["mtime"] == mtime:
+        return DATASET_CACHE[cache_key]["data"]
 
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             data = json.load(f)
-            DATASET_CACHE[code] = {"mtime": mtime, "data": data}
+            DATASET_CACHE[cache_key] = {"mtime": mtime, "data": data}
             return data
     except Exception as e:
         print(f"Error loading {filepath}: {e}")
         return []
 
-def get_summary_data():
-    if os.path.exists(SUMMARY_FILE):
-        try:
-            with open(SUMMARY_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception as e:
-            print(f"Error loading summary file: {e}")
-    return []
+def get_country_records(code, year=None):
+    code = code.upper()
+    if year and str(year).lower() != "all":
+        return get_country_records_for_year(code, str(year))
 
-def update_summary_entry(code, highest_sn, valid_count, last_record, check_time_str):
-    summary_list = get_summary_data()
+    # All years: combine and deduplicate across all discovered years
+    all_years = discover_years()
+    combined = []
+    seen = set()
+    for y in all_years:
+        recs = get_country_records_for_year(code, y)
+        for r in recs:
+            r_year = get_record_year(r, y)
+            r_sn = r.get("serial_number")
+            key = (r_year, r_sn)
+            if key not in seen:
+                seen.add(key)
+                combined.append(r)
+    return combined
+
+def get_summary_data(year=None):
+    if year and str(year).lower() != "all":
+        sum_path = get_summary_filepath(year)
+        if os.path.exists(sum_path):
+            try:
+                with open(sum_path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception as e:
+                print(f"Error loading summary for {year}: {e}")
+        return []
+
+    # All years: load every summary_<year>.json that exists
+    all_years = discover_years()
+    merged = []
+    for y in all_years:
+        sum_path = get_summary_filepath(y)
+        if os.path.exists(sum_path):
+            try:
+                with open(sum_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    for item in data:
+                        item["year"] = y
+                        merged.append(item)
+            except Exception as e:
+                print(f"Error reading {sum_path}: {e}")
+    return merged
+
+def update_summary_entry(code, year, highest_sn, valid_count, last_record, check_time_str):
+    year_str = str(year)
+    sum_path = get_summary_filepath(year_str)
+    summary_list = []
+    if os.path.exists(sum_path):
+        try:
+            with open(sum_path, "r", encoding="utf-8") as f:
+                summary_list = json.load(f)
+        except Exception as e:
+            print(f"Error reading {sum_path}: {e}")
+
+    meta = COUNTRY_META.get(code, {})
+    country_name = meta.get("name", code)
+    slug = meta.get("slug", code.lower())
+
     updated = False
     for item in summary_list:
         if item.get("country_code") == code:
             item["highest_confirmed_serial_number"] = highest_sn
             item["total_valid_records_found"] = valid_count
+            item["output_file"] = f"{slug}_{year_str}.json"
             item["last_record_details"] = {
-                "ec_no": last_record.get("ec_no"),
-                "ec_date": last_record.get("ec_date"),
-                "candidate_name": last_record.get("candidate_name")
+                "ec_no": last_record.get("ec_no", f"{code}-I-{year_str}-{highest_sn}"),
+                "ec_date": last_record.get("ec_date", ""),
+                "candidate_name": last_record.get("candidate_name", "")
             }
             item["last_checked_timestamp"] = check_time_str
             updated = True
             break
-    
-    if updated:
-        tmp = SUMMARY_FILE + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(summary_list, f, indent=2, ensure_ascii=False)
-        os.replace(tmp, SUMMARY_FILE)
+
+    if not updated:
+        summary_list.append({
+            "country_name": country_name,
+            "country_code": code,
+            "output_file": f"{slug}_{year_str}.json",
+            "starting_serial_number": 6000001,
+            "highest_confirmed_serial_number": highest_sn,
+            "total_serial_numbers_checked": valid_count,
+            "total_valid_records_found": valid_count,
+            "total_invalid_or_missing_records": 0,
+            "last_available_record_confirmed": True,
+            "errors_gaps_or_limitations": "Contiguous records from initial serial.",
+            "confirmation_evidence": {},
+            "last_record_details": {
+                "ec_no": last_record.get("ec_no", f"{code}-I-{year_str}-{highest_sn}"),
+                "ec_date": last_record.get("ec_date", ""),
+                "candidate_name": last_record.get("candidate_name", "")
+            },
+            "last_checked_timestamp": check_time_str
+        })
+
+    tmp = sum_path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(summary_list, f, indent=2, ensure_ascii=False)
+    os.replace(tmp, sum_path)
 
 def parse_ec_date(date_str):
     if not date_str:
@@ -270,14 +337,16 @@ class DirectoryAPIHandler(SimpleHTTPRequestHandler):
         path = parsed.path
         params = urllib.parse.parse_qs(parsed.query)
 
-        if path == "/api/countries":
-            self.handle_get_countries()
+        if path == "/api/years":
+            self.handle_get_years()
+        elif path == "/api/countries":
+            self.handle_get_countries(params)
         elif path == "/api/cards":
             self.handle_get_cards(params)
         elif path == "/api/card":
             self.handle_get_card(params)
         elif path == "/api/stats":
-            self.handle_get_stats()
+            self.handle_get_stats(params)
         else:
             # Serve static files from public/
             super().do_GET()
@@ -289,37 +358,87 @@ class DirectoryAPIHandler(SimpleHTTPRequestHandler):
         else:
             self.send_error(404, "Endpoint not found")
 
-    def handle_get_countries(self):
-        summary_list = get_summary_data()
-        summary_map = {item.get("country_code"): item for item in summary_list}
+    def handle_get_years(self):
+        years = discover_years()
+        curr_year = str(datetime.datetime.now().year)
+        self.send_json({
+            "available_years": years,
+            "current_year": curr_year
+        })
+
+    def handle_get_countries(self, params):
+        year_filter = params.get("year", ["all"])[0].strip()
+        available_years = discover_years()
+        curr_year = str(datetime.datetime.now().year)
 
         countries_resp = []
         for code, meta in COUNTRY_META.items():
-            s_item = summary_map.get(code, {})
-            # Verify actual loaded records count
-            records = get_country_records(code)
-            valid_count = len(records)
-            highest_sn = max([r["serial_number"] for r in records]) if records else s_item.get("highest_confirmed_serial_number", 6000001)
-            last_card = records[-1] if records else {}
+            if year_filter and year_filter.lower() != "all":
+                # Single year view
+                records = get_country_records_for_year(code, year_filter)
+                valid_count = len(records)
+                highest_sn = max([r["serial_number"] for r in records]) if records else 6000001
+                last_card = records[-1] if records else {}
+                countries_resp.append({
+                    "country_name": meta["name"],
+                    "country_code": code,
+                    "flag": meta["flag"],
+                    "year": year_filter,
+                    "output_file": f"{meta['slug']}_{year_filter}.json",
+                    "total_valid_records": valid_count,
+                    "highest_confirmed_serial": highest_sn,
+                    "starting_serial": 6000001,
+                    "last_available_record_confirmed": True,
+                    "last_record_details": {
+                        "ec_no": last_card.get("ec_no", ""),
+                        "ec_date": last_card.get("ec_date", ""),
+                        "candidate_name": last_card.get("candidate_name", "")
+                    },
+                    "last_checked_timestamp": None
+                })
+            else:
+                # All years aggregated view
+                total_count = 0
+                years_breakdown = {}
+                highest_sn = 6000001
+                all_records = []
+                for y in available_years:
+                    y_recs = get_country_records_for_year(code, y)
+                    count_y = len(y_recs)
+                    total_count += count_y
+                    years_breakdown[y] = count_y
+                    if y_recs:
+                        max_y_sn = max(r["serial_number"] for r in y_recs)
+                        if max_y_sn > highest_sn:
+                            highest_sn = max_y_sn
+                        all_records.extend(y_recs)
 
-            countries_resp.append({
-                "country_name": meta["name"],
-                "country_code": code,
-                "flag": meta["flag"],
-                "output_file": meta["file"],
-                "total_valid_records": valid_count,
-                "highest_confirmed_serial": highest_sn,
-                "starting_serial": s_item.get("starting_serial_number", 6000001),
-                "last_available_record_confirmed": s_item.get("last_available_record_confirmed", True),
-                "last_record_details": {
-                    "ec_no": last_card.get("ec_no", s_item.get("last_record_details", {}).get("ec_no", "")),
-                    "ec_date": last_card.get("ec_date", s_item.get("last_record_details", {}).get("ec_date", "")),
-                    "candidate_name": last_card.get("candidate_name", s_item.get("last_record_details", {}).get("candidate_name", ""))
-                },
-                "last_checked_timestamp": s_item.get("last_checked_timestamp", None)
-            })
+                last_card = all_records[-1] if all_records else {}
+                countries_resp.append({
+                    "country_name": meta["name"],
+                    "country_code": code,
+                    "flag": meta["flag"],
+                    "year": "all",
+                    "output_file": f"{meta['slug']}_{curr_year}.json",
+                    "total_valid_records": total_count,
+                    "highest_confirmed_serial": highest_sn,
+                    "starting_serial": 6000001,
+                    "years_breakdown": years_breakdown,
+                    "last_available_record_confirmed": True,
+                    "last_record_details": {
+                        "ec_no": last_card.get("ec_no", ""),
+                        "ec_date": last_card.get("ec_date", ""),
+                        "candidate_name": last_card.get("candidate_name", "")
+                    },
+                    "last_checked_timestamp": None
+                })
 
-        self.send_json({"countries": countries_resp})
+        self.send_json({
+            "selected_year": year_filter,
+            "available_years": available_years,
+            "current_year": curr_year,
+            "countries": countries_resp
+        })
 
     def handle_get_cards(self, params):
         code = params.get("country", ["PT"])[0].upper()
@@ -327,7 +446,8 @@ class DirectoryAPIHandler(SimpleHTTPRequestHandler):
             self.send_json({"error": f"Invalid country code: {code}"}, status_code=400)
             return
 
-        records = get_country_records(code)
+        year_param = params.get("year", ["all"])[0].strip()
+        records = get_country_records(code, year_param)
 
         search = params.get("search", [""])[0].strip().lower()
         field_filter = params.get("field", ["all"])[0].strip().lower()
@@ -350,52 +470,43 @@ class DirectoryAPIHandler(SimpleHTTPRequestHandler):
                 matched = False
                 name = r.get("candidate_name", "").lower()
                 sn_str = str(r.get("serial_number", ""))
+                r_year = get_record_year(r, "")
                 ec_no = r.get("ec_no", "").lower()
-                clearance = r.get("emigration_clearance", {})
-                pass_no = (r.get("passport", {}).get("passport_no") or clearance.get("Passport No", "")).lower()
-                visa_no = (r.get("visa", {}).get("visa_no") or clearance.get("Visa No", "")).lower()
-                employer = (r.get("employment", {}).get("employer") or clearance.get("Employer", "")).lower()
+                employer = (r.get("employment", {}).get("employer") or r.get("employer", "")).lower()
                 agency_obj = r.get("recruiting_agency", {})
-                agency = (agency_obj.get("name") or agency_obj.get("Name", "")).lower()
-                agency_lic = (agency_obj.get("license_no") or agency_obj.get("License No", "")).lower()
-                bmet_no = (r.get("bmet_no") or r.get("bmet_registration", {}).get("BMET No", "")).lower()
-                addr_obj = r.get("permanent_address", {})
-                district = (addr_obj.get("district") or addr_obj.get("District", "")).lower()
+                agency = (agency_obj.get("name") or "").lower()
+                agency_lic = (agency_obj.get("license_no") or "").lower()
+                agency_phone = (agency_obj.get("phone") or "").lower()
 
                 if field_filter == "name":
                     matched = search in name
-                elif field_filter == "passport":
-                    matched = search in pass_no
                 elif field_filter == "serial":
                     matched = search == sn_str or search in ec_no
                 elif field_filter == "employer":
                     matched = search in employer
                 elif field_filter == "agency":
-                    matched = search in agency or search in agency_lic
-                elif field_filter == "district":
-                    matched = search in district
+                    matched = search in agency or search in agency_lic or search in agency_phone
+                elif field_filter == "year":
+                    matched = search in r_year
                 else:
-                    # All fields
                     matched = (
                         search in name or
-                        search in pass_no or
                         search in sn_str or
                         search in ec_no or
-                        search in visa_no or
                         search in employer or
                         search in agency or
                         search in agency_lic or
-                        search in bmet_no or
-                        search in district
+                        search in agency_phone or
+                        search == r_year
                     )
                 if matched:
                     filtered.append(r)
         else:
-            filtered = records
+            filtered = list(records)
 
-        # Sorting
+        # Sorting: support multi-year serial sorting
         if sort_by == "serial_asc":
-            filtered.sort(key=lambda x: x.get("serial_number", 0))
+            filtered.sort(key=lambda x: (int(get_record_year(x, 0)), int(x.get("serial_number", 0))))
         elif sort_by == "name_asc":
             filtered.sort(key=lambda x: x.get("candidate_name", "").lower())
         elif sort_by == "name_desc":
@@ -405,8 +516,8 @@ class DirectoryAPIHandler(SimpleHTTPRequestHandler):
         elif sort_by == "date_asc":
             filtered.sort(key=lambda x: parse_ec_date(x.get("ec_date")))
         else:
-            # Default: serial_desc
-            filtered.sort(key=lambda x: x.get("serial_number", 0), reverse=True)
+            # Default: serial_desc (highest year and serial first)
+            filtered.sort(key=lambda x: (int(get_record_year(x, 0)), int(x.get("serial_number", 0))), reverse=True)
 
         total_matching = len(filtered)
         total_pages = max(1, (total_matching + limit - 1) // limit)
@@ -421,6 +532,7 @@ class DirectoryAPIHandler(SimpleHTTPRequestHandler):
             "country_name": COUNTRY_META[code]["name"],
             "country_code": code,
             "flag": COUNTRY_META[code]["flag"],
+            "selected_year": year_param,
             "total_records": len(records),
             "total_matching": total_matching,
             "page": page,
@@ -432,6 +544,7 @@ class DirectoryAPIHandler(SimpleHTTPRequestHandler):
     def handle_get_card(self, params):
         code = params.get("country", ["PT"])[0].upper()
         serial_str = params.get("serial", [""])[0].strip()
+        year_param = params.get("year", [""])[0].strip()
 
         if code not in COUNTRY_META or not serial_str:
             self.send_json({"error": "Invalid country code or serial number"}, status_code=400)
@@ -443,26 +556,30 @@ class DirectoryAPIHandler(SimpleHTTPRequestHandler):
             self.send_json({"error": "Invalid serial format"}, status_code=400)
             return
 
-        records = get_country_records(code)
+        records = get_country_records(code, year_param or None)
         for r in records:
             if r.get("serial_number") == target_sn:
+                r_year = get_record_year(r, "")
+                if year_param and str(r_year) != str(year_param):
+                    continue
                 self.send_json({"card": r})
                 return
 
         self.send_json({"error": f"Card {code}-{target_sn} not found"}, status_code=404)
 
-    def handle_get_stats(self):
-        summary_list = get_summary_data()
+    def handle_get_stats(self, params):
+        year_filter = params.get("year", ["all"])[0].strip()
+        available_years = discover_years()
+        curr_year = str(datetime.datetime.now().year)
+
         total_valid = 0
         countries_stats = []
-        for s in summary_list:
-            code = s.get("country_code")
-            meta = COUNTRY_META.get(code, {})
-            records = get_country_records(code)
+        for code, meta in COUNTRY_META.items():
+            records = get_country_records(code, year_filter)
             count = len(records)
             total_valid += count
             countries_stats.append({
-                "country_name": s.get("country_name"),
+                "country_name": meta["name"],
                 "country_code": code,
                 "flag": meta.get("flag", "🌐"),
                 "total_valid_records": count,
@@ -470,6 +587,9 @@ class DirectoryAPIHandler(SimpleHTTPRequestHandler):
             })
 
         self.send_json({
+            "selected_year": year_filter,
+            "available_years": available_years,
+            "current_year": curr_year,
             "total_countries": len(countries_stats),
             "total_valid_cards_all": total_valid,
             "countries": countries_stats
@@ -493,119 +613,149 @@ class DirectoryAPIHandler(SimpleHTTPRequestHandler):
             return
 
         country_name = COUNTRY_META[code]["name"]
-        filename = COUNTRY_META[code]["file"]
-        filepath = os.path.join(WORKSPACE_DIR, filename)
-
-        records = get_country_records(code)
-        current_highest = max([r["serial_number"] for r in records]) if records else 6000000
-        start_probe_sn = current_highest + 1
+        slug = COUNTRY_META[code]["slug"]
         check_time_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        current_year = str(datetime.datetime.now().year)
 
-        print(f"[{code}] Checking for new cards starting after {current_highest} at {check_time_str}...")
+        requested_year = body.get("year")
+        # Determine which years to check
+        if requested_year and str(requested_year).lower() not in ("all", "auto"):
+            years_to_check = [str(requested_year).strip()]
+        else:
+            # Auto mode: check current calendar year
+            years_to_check = [current_year]
+            # If in transition or if prior year has records, ensure prior year is checked too
+            prior_year = str(int(current_year) - 1)
+            prior_file = get_country_filepath(code, prior_year)
+            if os.path.exists(prior_file) and prior_year not in years_to_check:
+                years_to_check.append(prior_year)
+
+        print(f"[{code}] Checking for new cards for years {years_to_check} at {check_time_str}...")
 
         s = requests.Session()
         adapter = requests.adapters.HTTPAdapter(max_retries=2)
         s.mount("https://", adapter)
         s.headers.update({
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) BMET-Checker/2026",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9"
         })
 
-        new_cards = []
-        curr_sn = start_probe_sn
-        consecutive_misses = 0
-        max_miss_limit = 5  # Stop probing once 5 consecutive serial numbers are 302
+        all_new_cards = []
         errors_encountered = []
+        latest_serials_by_year = {}
 
-        # We probe sequentially past current_highest
-        while consecutive_misses < max_miss_limit:
-            url = f"https://raims.oep.gov.bd/ec-card/verify/{code}-I-2026-{curr_sn}"
-            try:
-                s.cookies.clear()
-                r = s.get(url, allow_redirects=False, timeout=8)
-                if r.status_code == 200:
-                    card_data = parse_card_html(r.text, url, country_name, code, curr_sn, "2026")
-                    new_cards.append(card_data)
-                    consecutive_misses = 0
-                    print(f"[{code}] Found new valid card: {curr_sn} ({card_data.get('candidate_name')})")
-                elif r.status_code == 302:
-                    consecutive_misses += 1
-                else:
-                    errors_encountered.append(f"SN {curr_sn}: HTTP {r.status_code}")
-                    consecutive_misses += 1
-            except Exception as e:
-                errors_encountered.append(f"SN {curr_sn}: {str(e)}")
-                consecutive_misses += 1
+        for target_year in years_to_check:
+            filepath = get_country_filepath(code, target_year)
+            existing_records = get_country_records_for_year(code, target_year)
+            current_highest = max([r["serial_number"] for r in existing_records]) if existing_records else 6000000
+            start_probe_sn = current_highest + 1
 
-            curr_sn += 1
+            new_cards_this_year = []
+            curr_sn = start_probe_sn
+            consecutive_misses = 0
+            max_miss_limit = 5
 
-        # Double check look-ahead probes if none found immediately
-        if not new_cards:
-            lookahead = [current_highest + 5, current_highest + 15, current_highest + 30]
-            for p_sn in lookahead:
+            while consecutive_misses < max_miss_limit:
+                url = f"https://raims.oep.gov.bd/ec-card/verify/{code}-I-{target_year}-{curr_sn}"
                 try:
                     s.cookies.clear()
-                    r = s.get(f"https://raims.oep.gov.bd/ec-card/verify/{code}-I-2026-{p_sn}", allow_redirects=False, timeout=6)
+                    r = s.get(url, allow_redirects=False, timeout=8)
                     if r.status_code == 200:
-                        card_data = parse_card_html(r.text, f"https://raims.oep.gov.bd/ec-card/verify/{code}-I-2026-{p_sn}", country_name, code, p_sn, "2026")
-                        new_cards.append(card_data)
-                        print(f"[{code}] Found look-ahead card: {p_sn}")
+                        card_data = parse_card_html(r.text, url, country_name, code, curr_sn, target_year)
+                        new_cards_this_year.append(card_data)
+                        consecutive_misses = 0
+                        print(f"[{code}-{target_year}] Found new valid card: {curr_sn} ({card_data.get('candidate_name')})")
+                    elif r.status_code == 302:
+                        consecutive_misses += 1
+                    else:
+                        errors_encountered.append(f"[{target_year}] SN {curr_sn}: HTTP {r.status_code}")
+                        consecutive_misses += 1
                 except Exception as e:
-                    pass
+                    errors_encountered.append(f"[{target_year}] SN {curr_sn}: {str(e)}")
+                    consecutive_misses += 1
 
-        # If new cards found, update disk JSON atomically
-        if new_cards:
-            # Merge with existing records, deduplicate
-            existing_sn_map = {r["serial_number"]: r for r in records}
-            for nc in new_cards:
-                existing_sn_map[nc["serial_number"]] = nc
+                curr_sn += 1
 
-            merged_records = sorted(existing_sn_map.values(), key=lambda x: x["serial_number"])
+            # Look-ahead probes if none found immediately and we have prior records
+            if not new_cards_this_year and current_highest > 6000000:
+                lookahead = [current_highest + 5, current_highest + 15, current_highest + 30]
+                for p_sn in lookahead:
+                    try:
+                        s.cookies.clear()
+                        p_url = f"https://raims.oep.gov.bd/ec-card/verify/{code}-I-{target_year}-{p_sn}"
+                        r = s.get(p_url, allow_redirects=False, timeout=6)
+                        if r.status_code == 200:
+                            card_data = parse_card_html(r.text, p_url, country_name, code, p_sn, target_year)
+                            new_cards_this_year.append(card_data)
+                            print(f"[{code}-{target_year}] Found look-ahead card: {p_sn}")
+                    except Exception:
+                        pass
 
-            tmp_filepath = filepath + ".tmp"
-            with open(tmp_filepath, "w", encoding="utf-8") as f:
-                json.dump(merged_records, f, indent=2, ensure_ascii=False)
-            os.replace(tmp_filepath, filepath)
+            # Save if new cards found for this year
+            if new_cards_this_year:
+                sn_map = {r["serial_number"]: r for r in existing_records}
+                for nc in new_cards_this_year:
+                    sn_map[nc["serial_number"]] = nc
 
-            # Invalidate cache
-            if code in DATASET_CACHE:
-                del DATASET_CACHE[code]
+                merged_records = sorted(sn_map.values(), key=lambda x: x["serial_number"])
 
-            updated_highest = max(existing_sn_map.keys())
-            last_rec = merged_records[-1]
+                tmp_filepath = filepath + ".tmp"
+                with open(tmp_filepath, "w", encoding="utf-8") as f:
+                    json.dump(merged_records, f, indent=2, ensure_ascii=False)
+                os.replace(tmp_filepath, filepath)
 
-            # Update summary_2026.json
-            update_summary_entry(code, updated_highest, len(merged_records), last_rec, check_time_str)
+                # Invalidate cache
+                cache_key = (code, target_year)
+                if cache_key in DATASET_CACHE:
+                    del DATASET_CACHE[cache_key]
 
+                updated_highest = max(sn_map.keys())
+                latest_serials_by_year[target_year] = updated_highest
+                last_rec = merged_records[-1]
+
+                update_summary_entry(code, target_year, updated_highest, len(merged_records), last_rec, check_time_str)
+                all_new_cards.extend(new_cards_this_year)
+            else:
+                latest_serials_by_year[target_year] = current_highest
+                last_rec = existing_records[-1] if existing_records else {}
+                if existing_records:
+                    update_summary_entry(code, target_year, current_highest, len(existing_records), last_rec, check_time_str)
+
+        # Build response
+        primary_year = years_to_check[0]
+        total_valid = len(get_country_records(code, requested_year or "all"))
+
+        if all_new_cards:
             self.send_json({
                 "status": "success",
                 "country_code": code,
                 "country_name": country_name,
-                "new_cards_count": len(new_cards),
-                "new_cards": new_cards,
-                "previous_highest_serial": current_highest,
-                "latest_serial_number": updated_highest,
-                "total_valid_records": len(merged_records),
+                "year": primary_year,
+                "checked_years": years_to_check,
+                "new_cards_count": len(all_new_cards),
+                "new_cards": all_new_cards,
+                "latest_serial_number": latest_serials_by_year.get(primary_year, 6000001),
+                "latest_serials_by_year": latest_serials_by_year,
+                "total_valid_records": total_valid,
                 "check_time": check_time_str,
-                "message": f"Successfully fetched and saved {len(new_cards)} newly issued card(s) for {country_name}!",
+                "message": f"Successfully fetched and saved {len(all_new_cards)} newly issued card(s) for {country_name}!",
                 "errors": errors_encountered if errors_encountered else None
             })
         else:
-            # Update check timestamp in summary even if no cards
-            last_rec = records[-1] if records else {}
-            update_summary_entry(code, current_highest, len(records), last_rec, check_time_str)
-
             self.send_json({
                 "status": "success",
                 "country_code": code,
                 "country_name": country_name,
+                "year": primary_year,
+                "checked_years": years_to_check,
                 "new_cards_count": 0,
                 "new_cards": [],
-                "previous_highest_serial": current_highest,
-                "latest_serial_number": current_highest,
-                "total_valid_records": len(records),
+                "latest_serial_number": latest_serials_by_year.get(primary_year, 6000001),
+                "latest_serials_by_year": latest_serials_by_year,
+                "total_valid_records": total_valid,
                 "check_time": check_time_str,
-                "message": "No new BMET clearance cards issued for this country.",
+                "message": "No new cards found.",
                 "errors": errors_encountered if errors_encountered else None
             })
 

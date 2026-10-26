@@ -1,61 +1,78 @@
 #!/usr/bin/env python3
 """
 Verification and Summary Finalization Script
-Ensures complete data integrity, schema consistency, and accuracy across all 12 European countries.
+Ensures complete data integrity, schema consistency, and accuracy across all European countries and years.
+Year-independent: dynamically verifies any year (e.g. 2026, 2027, 2028, etc.).
 """
 
 import os
+import sys
 import json
+import argparse
 
-WORKSPACE_DIR = "/home/elias/elias/euro-migration"
-SUMMARY_FILE = os.path.join(WORKSPACE_DIR, "summary_2026.json")
+WORKSPACE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 COUNTRIES = [
-    ("Portugal", "PT", "portugal_2026.json"),
-    ("Italy", "IT", "italy_2026.json"),
-    ("Greece", "GR", "greece_2026.json"),
-    ("Cyprus", "CY", "cyprus_2026.json"),
-    ("North Macedonia", "MK", "north_macedonia_2026.json"),
-    ("Romania", "RO", "romania_2026.json"),
-    ("Moldova", "MD", "moldova_2026.json"),
-    ("Malta", "MT", "malta_2026.json"),
-    ("Slovenia", "SI", "slovenia_2026.json"),
-    ("Serbia", "RS", "serbia_2026.json"),
-    ("Bulgaria", "BG", "bulgaria_2026.json"),
-    ("Bosnia and Herzegovina", "BA", "bosnia_and_herzegovina_2026.json")
+    ("Portugal", "PT", "portugal"),
+    ("Italy", "IT", "italy"),
+    ("Greece", "GR", "greece"),
+    ("Cyprus", "CY", "cyprus"),
+    ("North Macedonia", "MK", "north_macedonia"),
+    ("Romania", "RO", "romania"),
+    ("Moldova", "MD", "moldova"),
+    ("Malta", "MT", "malta"),
+    ("Slovenia", "SI", "slovenia"),
+    ("Serbia", "RS", "serbia"),
+    ("Bulgaria", "BG", "bulgaria"),
+    ("Bosnia and Herzegovina", "BA", "bosnia_and_herzegovina")
 ]
 
-def verify_and_standardize():
-    with open(SUMMARY_FILE, "r", encoding="utf-8") as f:
-        existing_summary = json.load(f)
+def discover_years():
+    years = set()
+    for fname in os.listdir(WORKSPACE_DIR):
+        if fname.endswith(".json"):
+            parts = fname[:-5].rsplit("_", 1)
+            if len(parts) == 2 and parts[1].isdigit() and len(parts[1]) == 4:
+                years.add(parts[1])
+    return sorted(list(years))
 
-    # Index existing by code
+def verify_and_standardize_year(year):
+    summary_file = os.path.join(WORKSPACE_DIR, f"summary_{year}.json")
     summary_by_code = {}
-    if isinstance(existing_summary, list):
-        for item in existing_summary:
-            summary_by_code[item["country_code"]] = item
-    elif isinstance(existing_summary, dict):
-        summary_by_code = existing_summary
+    if os.path.exists(summary_file):
+        try:
+            with open(summary_file, "r", encoding="utf-8") as f:
+                existing_summary = json.load(f)
+                if isinstance(existing_summary, list):
+                    for item in existing_summary:
+                        summary_by_code[item["country_code"]] = item
+                elif isinstance(existing_summary, dict):
+                    summary_by_code = existing_summary
+        except Exception:
+            summary_by_code = {}
 
     final_summary_list = []
     total_valid_all = 0
     total_checked_all = 0
 
-    print("=========================================================================================")
+    print(f"\n====================== DATASET VERIFICATION (YEAR: {year}) ======================")
     print(f"{'Country':24} {'Code':4} {'Records':8} {'Start SN':10} {'Highest SN':10} {'Contiguous':12} {'Confirmed':10}")
     print("=========================================================================================")
 
-    for name, code, filename in COUNTRIES:
+    for name, code, slug in COUNTRIES:
+        filename = f"{slug}_{year}.json"
         filepath = os.path.join(WORKSPACE_DIR, filename)
-        assert os.path.exists(filepath), f"File {filename} does not exist!"
+        if not os.path.exists(filepath):
+            print(f"{name:24} {code:4} (No dataset file found for {year})")
+            continue
 
         with open(filepath, "r", encoding="utf-8") as fp:
             records = json.load(fp)
 
-        # Validate records
         rec_count = len(records)
         total_valid_all += rec_count
-        assert rec_count > 0, f"No records in {filename}!"
+        if rec_count == 0:
+            continue
 
         serials = [r["serial_number"] for r in records]
         min_sn = min(serials)
@@ -68,9 +85,11 @@ def verify_and_standardize():
         # Check records integrity
         last_rec = records[-1]
         for r in records:
-            assert r["country_code"] == code, f"Mismatched country code in {filename}: {r['country_code']}"
-            assert r["year"] == "2026", f"Mismatched year in {filename}: {r['year']}"
-            assert r["verification_url"] == f"https://raims.oep.gov.bd/ec-card/verify/{code}-I-2026-{r['serial_number']}"
+            rec_code = r.get("country_code") or (r["ec_no"].split("-")[0] if "-" in r.get("ec_no", "") else "")
+            assert rec_code == code, f"Mismatched country code in {filename}: {rec_code}"
+            rec_year = str(r.get("year") or (r["ec_no"].split("-")[2] if len(r.get("ec_no", "").split("-")) >= 3 else year))
+            assert rec_year == str(year), f"Mismatched year in {filename}: {rec_year}"
+            assert r["verification_url"] == f"https://raims.oep.gov.bd/ec-card/verify/{code}-I-{year}-{r['serial_number']}", f"Bad URL in {filename}"
 
         # Check internal gaps
         serial_set = set(serials)
@@ -119,15 +138,30 @@ def verify_and_standardize():
         contiguous_str = "Yes" if not internal_missing else f"No ({len(internal_missing)} missing)"
         print(f"{name:24} {code:4} {rec_count:8} {min_sn:10} {max_sn:10} {contiguous_str:12} {str(confirmed):10}")
 
-    print("=========================================================================================")
-    print(f"TOTAL: 12 countries | {total_valid_all} valid records | {total_checked_all} serials checked.")
-    print("=========================================================================================")
+    if final_summary_list:
+        print("=========================================================================================")
+        print(f"TOTAL: {len(final_summary_list)} countries | {total_valid_all} valid records | {total_checked_all} serials checked.")
+        print("=========================================================================================")
 
-    # Write out the clean, standardized summary_2026.json
-    with open(SUMMARY_FILE, "w", encoding="utf-8") as f:
-        json.dump(final_summary_list, f, indent=2, ensure_ascii=False)
+        with open(summary_file, "w", encoding="utf-8") as f:
+            json.dump(final_summary_list, f, indent=2, ensure_ascii=False)
 
-    print(f"Successfully finalized and validated: {SUMMARY_FILE}")
+        print(f"Successfully finalized and validated: {summary_file}")
+
+def main():
+    parser = argparse.ArgumentParser(description="Verify BMET dataset integrity and standardize summary files.")
+    parser.add_argument("--year", type=str, help="Specific year to verify (e.g. 2026). If omitted, verifies all discovered years.")
+    args = parser.parse_args()
+
+    if args.year:
+        verify_and_standardize_year(args.year)
+    else:
+        years = discover_years()
+        if not years:
+            print("No year datasets found in workspace.")
+            return
+        for y in years:
+            verify_and_standardize_year(y)
 
 if __name__ == "__main__":
-    verify_and_standardize()
+    main()

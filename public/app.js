@@ -1,6 +1,6 @@
 /**
  * BMET Clearance Card Directory — Application Script
- * European Migration 2026
+ * European Migration Verification Portal (Year-Independent)
  */
 
 (function () {
@@ -9,6 +9,9 @@
     // Application State
     const state = {
         view: 'directory',            // 'directory' | 'explorer'
+        selectedYear: 'all',          // 'all' | '2026' | '2027' | ...
+        availableYears: [],
+        currentYear: '',
         countries: [],
         currentCountry: null,
         cards: [],
@@ -30,6 +33,7 @@
         navHomeBtn: document.getElementById('navHomeBtn'),
         navViewAllBtn: document.getElementById('navViewAllBtn'),
         globalTotalCards: document.getElementById('globalTotalCards'),
+        globalYearSelect: document.getElementById('globalYearSelect'),
         toastContainer: document.getElementById('toastContainer'),
 
         // View 1: Directory
@@ -59,6 +63,7 @@
         cardSearchInput: document.getElementById('cardSearchInput'),
         clearSearchBtn: document.getElementById('clearSearchBtn'),
         filterFieldSelect: document.getElementById('filterFieldSelect'),
+        explorerYearSelect: document.getElementById('explorerYearSelect'),
         sortBySelect: document.getElementById('sortBySelect'),
         viewTableBtn: document.getElementById('viewTableBtn'),
         viewGridBtn: document.getElementById('viewGridBtn'),
@@ -84,15 +89,12 @@
         modalFlag: document.getElementById('modalFlag'),
         modalTitle: document.getElementById('modalTitle'),
         modalEcNo: document.getElementById('modalEcNo'),
-        modalPhoto: document.getElementById('modalPhoto'),
+        modalAvatarIcon: document.getElementById('modalAvatarIcon'),
         modalCandidateName: document.getElementById('modalCandidateName'),
         modalEcDate: document.getElementById('modalEcDate'),
         modalCountryBadge: document.getElementById('modalCountryBadge'),
         modalClearanceGrid: document.getElementById('modalClearanceGrid'),
         modalAgencyGrid: document.getElementById('modalAgencyGrid'),
-        modalBmetGrid: document.getElementById('modalBmetGrid'),
-        modalAddressGrid: document.getElementById('modalAddressGrid'),
-        modalEmergencyGrid: document.getElementById('modalEmergencyGrid'),
         modalVerifyUrlBtn: document.getElementById('modalVerifyUrlBtn'),
         modalCopyUrlBtn: document.getElementById('modalCopyUrlBtn'),
         modalDownloadJsonBtn: document.getElementById('modalDownloadJsonBtn')
@@ -102,6 +104,33 @@
     function formatNum(num) {
         if (num === null || num === undefined) return '0';
         return Number(num).toLocaleString();
+    }
+
+    // Helpers: Derive country code, year, and candidate initials
+    function getCardCountryCode(card) {
+        if (card.country_code) return card.country_code;
+        if (card.ec_no) {
+            const parts = card.ec_no.split('-');
+            if (parts.length >= 1 && parts[0]) return parts[0];
+        }
+        return state.currentCountry?.country_code || '';
+    }
+
+    function getCardYear(card) {
+        if (card.year) return String(card.year);
+        if (card.ec_no) {
+            const parts = card.ec_no.split('-');
+            if (parts.length >= 3 && parts[2]) return parts[2];
+        }
+        if (state.selectedYear && state.selectedYear !== 'all') return state.selectedYear;
+        return state.currentYear || '';
+    }
+
+    function getCandidateInitials(name) {
+        if (!name) return 'EC';
+        const parts = name.trim().split(/\s+/).filter(Boolean);
+        if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
     }
 
     // Helper: Toast Notifications
@@ -122,14 +151,69 @@
     // API Calls
     // ==========================================================================
 
+    async function fetchYears() {
+        try {
+            const res = await fetch('/api/years');
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            state.availableYears = data.available_years || [];
+            state.currentYear = data.current_year || '';
+            populateYearSelects();
+        } catch (err) {
+            console.error('Failed to load years:', err);
+        }
+    }
+
+    function populateYearSelects() {
+        const selects = [elements.globalYearSelect, elements.explorerYearSelect];
+        selects.forEach(sel => {
+            if (!sel) return;
+            const currentVal = state.selectedYear;
+            sel.innerHTML = '<option value="all">All Years</option>';
+            state.availableYears.forEach(y => {
+                const opt = document.createElement('option');
+                opt.value = y;
+                opt.textContent = `Year ${y}`;
+                sel.appendChild(opt);
+            });
+            sel.value = currentVal;
+        });
+    }
+
+    function onYearChanged(newYear) {
+        state.selectedYear = newYear;
+        if (elements.globalYearSelect) elements.globalYearSelect.value = newYear;
+        if (elements.explorerYearSelect) elements.explorerYearSelect.value = newYear;
+
+        if (state.view === 'directory') {
+            fetchCountries();
+        } else {
+            state.page = 1;
+            fetchCards();
+            fetchCountries();
+        }
+    }
+
     async function fetchCountries() {
         try {
-            const res = await fetch('/api/countries');
+            const params = new URLSearchParams();
+            if (state.selectedYear && state.selectedYear !== 'all') {
+                params.append('year', state.selectedYear);
+            }
+            const queryStr = params.toString() ? `?${params.toString()}` : '';
+            const res = await fetch(`/api/countries${queryStr}`);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             state.countries = data.countries || [];
             updateGlobalStats();
             renderCountriesGrid();
+            if (state.currentCountry) {
+                const updated = state.countries.find(c => c.country_code === state.currentCountry.country_code);
+                if (updated) {
+                    state.currentCountry = updated;
+                    updateExplorerHeader();
+                }
+            }
         } catch (err) {
             console.error('Failed to load countries:', err);
             showToast('Failed to load countries data.', 'error');
@@ -149,6 +233,10 @@
             field: state.searchField,
             sort: state.sortBy
         });
+
+        if (state.selectedYear && state.selectedYear !== 'all') {
+            params.append('year', state.selectedYear);
+        }
 
         try {
             const res = await fetch(`/api/cards?${params.toString()}`);
@@ -181,20 +269,24 @@
         elements.checkNewBtnText.textContent = 'Checking BMET Portal...';
 
         try {
+            const targetYear = state.selectedYear && state.selectedYear !== 'all' ? state.selectedYear : 'auto';
             const res = await fetch('/api/check-new-cards', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ country_code: countryCode })
+                body: JSON.stringify({
+                    country_code: countryCode,
+                    year: targetYear
+                })
             });
 
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
 
-            // Refresh country list to sync counts
+            // Refresh country list & years to sync counts
+            await fetchYears();
             await fetchCountries();
 
             if (state.currentCountry && state.currentCountry.country_code === countryCode) {
-                // Update local country reference
                 const updated = state.countries.find(c => c.country_code === countryCode);
                 if (updated) {
                     state.currentCountry = updated;
@@ -209,15 +301,14 @@
                     elements.statusBannerTitle.textContent = 'New Cards Retrieved & Saved Permanently';
                     elements.statusBannerMsg.textContent = `${data.message} Stored in ${updated ? updated.output_file : 'JSON file'}. Latest confirmed serial: ${data.latest_serial_number}. Checked at ${data.check_time}.`;
                     showToast(`Found ${data.new_cards_count} new card(s) for ${data.country_name}!`, 'success');
-                    // Reset to first page & re-fetch to view new cards immediately
                     state.page = 1;
                     fetchCards();
                 } else {
                     elements.updateStatusBanner.classList.add('info');
                     elements.statusBannerIcon.textContent = 'ℹ️';
-                    elements.statusBannerTitle.textContent = 'No New Cards Available';
-                    elements.statusBannerMsg.textContent = `${data.message} Verified up to serial ${data.latest_serial_number}. Checked at ${data.check_time}.`;
-                    showToast(data.message, 'info');
+                    elements.statusBannerTitle.textContent = 'No New Cards';
+                    elements.statusBannerMsg.textContent = 'No new cards found.';
+                    showToast('No new cards found.', 'info');
                 }
             } else {
                 showToast(data.message, data.new_cards_count > 0 ? 'success' : 'info');
@@ -367,7 +458,12 @@
         elements.explorerFlag.textContent = c.flag || '🌐';
         elements.explorerCode.textContent = c.country_code;
         elements.explorerCountryName.textContent = c.country_name;
-        elements.explorerCardSummary.textContent = `${formatNum(c.total_valid_records)} verified clearance cards issued in 2026 • Latest serial: ${c.highest_confirmed_serial || '—'}`;
+
+        const yearLabel = state.selectedYear && state.selectedYear !== 'all'
+            ? ` in ${state.selectedYear}`
+            : ' across all years';
+
+        elements.explorerCardSummary.textContent = `${formatNum(c.total_valid_records)} verified clearance cards issued${yearLabel} • Latest serial: ${c.highest_confirmed_serial || '—'}`;
     }
 
     function updateCardsDisplayVisibility() {
@@ -420,36 +516,30 @@
         elements.cardsTableBody.innerHTML = '';
         state.cards.forEach(card => {
             const tr = document.createElement('tr');
-            const photoUrl = card.photo_url || '';
-            const passportNo = card.passport?.passport_no || card.emigration_clearance?.['Passport No'] || '—';
-            const visaNo = card.visa?.visa_no || card.emigration_clearance?.['Visa No'] || '—';
-            const employer = card.employment?.employer || card.emigration_clearance?.['Employer'] || '—';
-            const agencyName = card.recruiting_agency?.name || card.recruiting_agency?.Name || '—';
+            const employer = card.employment?.employer || card.employer || '—';
+            const agency = card.recruiting_agency || {};
+            const agencyName = agency.name || '—';
+            const agencyDetails = agency.license_no ? `${agencyName} (${agency.license_no})` : agencyName;
+            const cardYear = getCardYear(card) || '—';
 
             tr.innerHTML = `
                 <td>
-                    <img src="${photoUrl}" class="table-photo-thumb" alt="Photo" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'42\\' height=\\'48\\' viewBox=\\'0 0 24 24\\' fill=\\'%2364748b\\'><path d=\\'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z\\'/></svg>'">
+                    <span class="sn-badge">${card.ec_no || card.serial_number}</span>
                 </td>
                 <td>
-                    <span class="sn-badge">${card.ec_no || card.serial_number}</span>
+                    <span class="year-badge">${cardYear}</span>
                 </td>
                 <td class="candidate-name-cell">
                     ${card.candidate_name || '—'}
                 </td>
-                <td class="passport-cell">
-                    ${passportNo}
-                </td>
                 <td class="date-cell">
                     ${card.ec_date || '—'}
                 </td>
-                <td style="font-family: var(--font-mono); font-size: 0.8rem;">
-                    ${visaNo}
-                </td>
-                <td style="max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${employer}">
+                <td style="max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${employer}">
                     ${employer}
                 </td>
-                <td style="max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${agencyName}">
-                    ${agencyName}
+                <td style="max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${agencyDetails}">
+                    ${agencyDetails}
                 </td>
                 <td style="text-align: right;">
                     <button class="btn btn-secondary btn-sm btn-card-details" data-sn="${card.serial_number}">
@@ -472,26 +562,32 @@
         state.cards.forEach(card => {
             const item = document.createElement('div');
             item.className = 'card-item-box';
-            const photoUrl = card.photo_url || '';
-            const passportNo = card.passport?.passport_no || card.emigration_clearance?.['Passport No'] || '—';
-            const employer = card.employment?.employer || card.emigration_clearance?.['Employer'] || '—';
+            const employer = card.employment?.employer || card.employer || '—';
+            const agency = card.recruiting_agency || {};
+            const agencyName = agency.name || '—';
+            const agencyDetails = agency.license_no ? `${agencyName} (${agency.license_no})` : agencyName;
+            const cardYear = getCardYear(card);
+            const initials = getCandidateInitials(card.candidate_name);
 
             item.innerHTML = `
                 <div class="card-item-top">
-                    <img src="${photoUrl}" class="card-item-photo" alt="Photo" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'55\\' height=\\'65\\' viewBox=\\'0 0 24 24\\' fill=\\'%2364748b\\'><path d=\\'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z\\'/></svg>'">
+                    <div class="card-avatar-pill">${initials}</div>
                     <div class="card-item-main-info">
                         <div class="card-item-name" title="${card.candidate_name || ''}">${card.candidate_name || '—'}</div>
                         <div class="card-item-meta">
-                            <div><span class="sn-badge" style="font-size: 0.72rem;">${card.ec_no || card.serial_number}</span></div>
-                            <div>Passport: <strong>${passportNo}</strong></div>
-                            <div>Date: ${card.ec_date || '—'}</div>
+                            <div>
+                                <span class="sn-badge" style="font-size: 0.72rem;">${card.ec_no || card.serial_number}</span>
+                                ${cardYear ? `<span class="grid-year-badge">${cardYear}</span>` : ''}
+                            </div>
+                            <div>Date: <strong>${card.ec_date || '—'}</strong></div>
                         </div>
                     </div>
                 </div>
-                <div style="font-size: 0.78rem; color: var(--text-muted); border-top: 1px dashed var(--border-subtle); padding-top: 0.5rem;">
-                    <div>Employer: <strong>${employer}</strong></div>
+                <div style="font-size: 0.8rem; color: var(--text-muted); border-top: 1px dashed var(--border-subtle); padding-top: 0.6rem; display: flex; flex-direction: column; gap: 0.25rem;">
+                    <div>Employer: <strong style="color: var(--text-main);">${employer}</strong></div>
+                    <div>Agency: <strong style="color: var(--text-main);">${agencyDetails}</strong></div>
                 </div>
-                <button class="btn btn-secondary btn-sm" style="width: 100%;">View Clearance Details</button>
+                <button class="btn btn-secondary btn-sm" style="width: 100%; margin-top: 0.25rem;">View Clearance Details</button>
             `;
 
             item.addEventListener('click', () => openCardModal(card));
@@ -519,138 +615,88 @@
             return btn;
         };
 
+        // First
         elements.paginationControls.appendChild(createBtn('«', 1, state.page === 1));
+        // Prev
         elements.paginationControls.appendChild(createBtn('‹', state.page - 1, state.page === 1));
 
-        // Window of numbers
-        let startPage = Math.max(1, state.page - 2);
-        let endPage = Math.min(totalPages, state.page + 2);
-        if (state.page <= 3) endPage = Math.min(5, totalPages);
-        if (state.page >= totalPages - 2) startPage = Math.max(1, totalPages - 4);
-
-        for (let p = startPage; p <= endPage; p++) {
-            elements.paginationControls.appendChild(createBtn(p, p, false, p === state.page));
+        // Window of page numbers
+        const maxButtons = 5;
+        let startPage = Math.max(1, state.page - Math.floor(maxButtons / 2));
+        let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+        if (endPage - startPage + 1 < maxButtons) {
+            startPage = Math.max(1, endPage - maxButtons + 1);
         }
 
+        for (let p = startPage; p <= endPage; p++) {
+            elements.paginationControls.appendChild(createBtn(String(p), p, false, p === state.page));
+        }
+
+        // Next
         elements.paginationControls.appendChild(createBtn('›', state.page + 1, state.page === totalPages));
+        // Last
         elements.paginationControls.appendChild(createBtn('»', totalPages, state.page === totalPages));
     }
 
     // ==========================================================================
-    // Card Detail Modal
+    // Modal Details Rendering
     // ==========================================================================
+
+    function renderDetailItem(label, val) {
+        if (!val || val === 'null' || val === 'None') val = '—';
+        return `
+            <div class="detail-item">
+                <span class="detail-label">${label}</span>
+                <span class="detail-val">${val}</span>
+            </div>
+        `;
+    }
 
     function openCardModal(card) {
         state.activeCardModal = card;
-        const pass = card.passport || {};
-        const visa = card.visa || {};
-        const emp = card.employment || {};
-        const agency = card.recruiting_agency || {};
-        const addr = card.permanent_address || {};
-        const emergency = card.emergency_contact || {};
 
-        // Fallbacks for legacy fields if ever present
-        const cl = card.emigration_clearance || {};
-        const bm = card.bmet_registration || {};
+        const code = getCardCountryCode(card);
+        const cardYear = getCardYear(card);
+        const meta = state.countries.find(c => c.country_code === code) || state.currentCountry;
+        const cName = meta?.country_name || code || 'Europe';
 
-        const passportNo = pass.passport_no || cl['Passport No'] || '—';
-        const passIssue = pass.issue_date || cl['Passport Issue Date'] || '—';
-        const passExpire = pass.expire_date || cl['Passport Expire Date'] || '—';
-        const prevPassports = pass.previous_passports || [];
+        // Modal Flag & Title
+        elements.modalFlag.textContent = meta?.flag || '🌐';
+        elements.modalTitle.textContent = `${cName} Emigration Clearance`;
+        elements.modalEcNo.textContent = card.ec_no || `${code}-I-${cardYear}-${card.serial_number}`;
 
-        const visaNo = visa.visa_no || cl['Visa No'] || '—';
-        const visaIssue = visa.issue_date || cl['Visa Issue Date'] || '—';
-        const visaExpire = visa.expire_date || cl['Visa Expire Date'] || '—';
-
-        const employer = emp.employer || cl['Employer'] || '—';
-        const referralNo = emp.referral_no || cl['Referral No'] || '—';
-
-        const birthDate = card.birth_date || cl['Birth Date'] || bm['Birth Date'] || '—';
-        const bloodGroup = card.blood_group || cl['Blood Group'] || '—';
-        const gender = card.gender || bm['Gender'] || '—';
-        const nid = card.nid || bm['NID'] || '—';
-        const bmetNo = card.bmet_no || bm['BMET No'] || '—';
-
-        const agencyName = agency.name || agency.Name || 'Direct / None';
-        const agencyLic = agency.license_no || agency['License No'] || '—';
-        const agencyPhone = agency.phone || agency['Phone'] || '—';
-
-        const houseRoad = addr.house_vill_road || addr['House/Vill/Road'] || '—';
-        const postOffice = addr.post_office || addr['Post Office'] || '—';
-        const policeStation = addr.police_station || addr['Police Station'] || '—';
-        const upazila = addr.upazila || addr['Upazila'] || '—';
-        const district = addr.district || addr['District'] || '—';
-        const division = addr.division || addr['Division'] || '—';
-
-        const emgName = emergency.name || emergency.Name || '—';
-        const emgRel = emergency.relation || emergency.Relation || '—';
-        const emgMob = emergency.mobile || emergency.Mobile || '—';
-        const emgAddr = emergency.address || emergency.Address || '—';
-
-        elements.modalFlag.textContent = state.currentCountry?.flag || '🇪🇺';
-        elements.modalTitle.textContent = `${state.currentCountry?.country_name || card.country} Clearance Record`;
-        elements.modalEcNo.textContent = card.ec_no || `Serial #${card.serial_number}`;
-        elements.modalPhoto.src = card.photo_url || '';
+        // Header Info
+        if (elements.modalAvatarIcon) {
+            elements.modalAvatarIcon.textContent = getCandidateInitials(card.candidate_name);
+        }
         elements.modalCandidateName.textContent = card.candidate_name || 'N/A';
         elements.modalEcDate.textContent = `EC Date: ${card.ec_date || 'N/A'}`;
-        elements.modalCountryBadge.textContent = card.country || state.currentCountry?.country_name || 'Europe';
+        elements.modalCountryBadge.textContent = `${meta?.flag || '🌐'} ${cName}${cardYear ? ` • Year ${cardYear}` : ''}`;
 
-        // Prev passports snippet
-        let prevPassportsHtml = '';
-        if (prevPassports && prevPassports.length > 0) {
-            prevPassportsHtml = `<div class="grid-field-row" style="grid-column: 1 / -1;"><span class="field-label">Prior Registered Passports:</span><span class="field-val" style="color: #0284c7;">${prevPassports.join(', ')}</span></div>`;
-        }
+        // Section 1: Clearance Details
+        const emp = card.employment || {};
+        const employer = emp.employer || card.employer || '—';
 
-        // Section 1: Clearance & Passport & Visa
         elements.modalClearanceGrid.innerHTML = `
-            <div class="grid-field-row"><span class="field-label">Passport No:</span><span class="field-val"><strong>${passportNo}</strong></span></div>
-            <div class="grid-field-row"><span class="field-label">Birth Date:</span><span class="field-val">${birthDate}</span></div>
-            <div class="grid-field-row"><span class="field-label">Passport Issue:</span><span class="field-val">${passIssue}</span></div>
-            <div class="grid-field-row"><span class="field-label">Passport Expire:</span><span class="field-val">${passExpire}</span></div>
-            ${prevPassportsHtml}
-            <div class="grid-field-row"><span class="field-label">Visa No:</span><span class="field-val">${visaNo}</span></div>
-            <div class="grid-field-row"><span class="field-label">Blood Group:</span><span class="field-val">${bloodGroup}</span></div>
-            <div class="grid-field-row"><span class="field-label">Visa Issue Date:</span><span class="field-val">${visaIssue}</span></div>
-            <div class="grid-field-row"><span class="field-label">Visa Expire Date:</span><span class="field-val">${visaExpire}</span></div>
-            <div class="grid-field-row" style="grid-column: 1 / -1;"><span class="field-label">Employer:</span><span class="field-val">${employer}</span></div>
-            <div class="grid-field-row"><span class="field-label">Destination Country:</span><span class="field-val">${card.country}</span></div>
-            <div class="grid-field-row"><span class="field-label">Referral No:</span><span class="field-val">${referralNo}</span></div>
+            ${renderDetailItem('Candidate Name', card.candidate_name)}
+            ${renderDetailItem('Destination Country', `${cName} (${code})`)}
+            ${renderDetailItem('Serial Number', card.serial_number)}
+            ${renderDetailItem('Issuance Year', cardYear || '—')}
+            ${renderDetailItem('EC No', card.ec_no)}
+            ${renderDetailItem('EC Date', card.ec_date)}
+            ${renderDetailItem('Employer', employer)}
         `;
 
         // Section 2: Recruiting Agency
+        const ra = card.recruiting_agency || {};
         elements.modalAgencyGrid.innerHTML = `
-            <div class="grid-field-row"><span class="field-label">Agency Name:</span><span class="field-val">${agencyName}</span></div>
-            <div class="grid-field-row"><span class="field-label">License No:</span><span class="field-val">${agencyLic}</span></div>
-            <div class="grid-field-row" style="grid-column: 1 / -1;"><span class="field-label">Contact Phone:</span><span class="field-val">${agencyPhone}</span></div>
-        `;
-
-        // Section 3: BMET Registration
-        elements.modalBmetGrid.innerHTML = `
-            <div class="grid-field-row"><span class="field-label">BMET Reg No:</span><span class="field-val">${bmetNo}</span></div>
-            <div class="grid-field-row"><span class="field-label">NID:</span><span class="field-val">${nid}</span></div>
-            <div class="grid-field-row"><span class="field-label">Gender:</span><span class="field-val">${gender}</span></div>
-            <div class="grid-field-row"><span class="field-label">Birth Date:</span><span class="field-val">${birthDate}</span></div>
-        `;
-
-        // Section 4: Address
-        elements.modalAddressGrid.innerHTML = `
-            <div class="grid-field-row"><span class="field-label">House/Village/Road:</span><span class="field-val">${houseRoad}</span></div>
-            <div class="grid-field-row"><span class="field-label">Post Office:</span><span class="field-val">${postOffice}</span></div>
-            <div class="grid-field-row"><span class="field-label">Police Station:</span><span class="field-val">${policeStation}</span></div>
-            <div class="grid-field-row"><span class="field-label">District:</span><span class="field-val">${district}</span></div>
-            <div class="grid-field-row" style="grid-column: 1 / -1;"><span class="field-label">Division:</span><span class="field-val">${division}</span></div>
-        `;
-
-        // Section 5: Emergency Contact
-        elements.modalEmergencyGrid.innerHTML = `
-            <div class="grid-field-row"><span class="field-label">Contact Name:</span><span class="field-val">${emgName}</span></div>
-            <div class="grid-field-row"><span class="field-label">Relation:</span><span class="field-val">${emgRel}</span></div>
-            <div class="grid-field-row"><span class="field-label">Mobile:</span><span class="field-val">${emgMob}</span></div>
-            <div class="grid-field-row"><span class="field-label">Address:</span><span class="field-val">${emgAddr}</span></div>
+            ${renderDetailItem('Agency Name', ra.name)}
+            ${renderDetailItem('RL License No', ra.license_no)}
+            ${renderDetailItem('Contact Phone', ra.phone)}
         `;
 
         // Official Verify URL
-        const verifyUrl = card.verification_url || `https://raims.oep.gov.bd/ec-card/verify/${card.country_code}-I-2026-${card.serial_number}`;
+        const verifyUrl = card.verification_url || `https://raims.oep.gov.bd/ec-card/verify/${code}-I-${cardYear}-${card.serial_number}`;
         elements.modalVerifyUrlBtn.href = verifyUrl;
 
         elements.cardDetailModal.classList.remove('hidden');
@@ -674,7 +720,9 @@
     function downloadCardJson() {
         if (!state.activeCardModal) return;
         const card = state.activeCardModal;
-        const filename = `bmet_${card.country_code}_${card.serial_number}.json`;
+        const code = getCardCountryCode(card);
+        const y = getCardYear(card) || 'card';
+        const filename = `bmet_${code}_${y}_${card.serial_number}.json`;
         const blob = new Blob([JSON.stringify(card, null, 2)], { type: 'application/json' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
@@ -716,6 +764,14 @@
         elements.navHomeBtn.addEventListener('click', () => switchView('directory'));
         elements.navViewAllBtn.addEventListener('click', () => switchView('directory'));
         elements.explorerBackBtn.addEventListener('click', () => switchView('directory'));
+
+        // Global and Explorer Year Select
+        if (elements.globalYearSelect) {
+            elements.globalYearSelect.addEventListener('change', (e) => onYearChanged(e.target.value));
+        }
+        if (elements.explorerYearSelect) {
+            elements.explorerYearSelect.addEventListener('change', (e) => onYearChanged(e.target.value));
+        }
 
         // Country search in directory
         elements.countrySearchInput.addEventListener('input', renderCountriesGrid);
@@ -816,9 +872,10 @@
     }
 
     // Initialization
-    function init() {
+    async function init() {
         setupEventListeners();
-        fetchCountries();
+        await fetchYears();
+        await fetchCountries();
     }
 
     if (document.readyState === 'loading') {

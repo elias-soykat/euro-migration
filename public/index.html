@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BMET Clearance Card Directory — European Migration 2026</title>
-    <meta name="description" content="Searchable, verified directory of Bureau of Manpower, Employment and Training (BMET) Emigration Clearance Cards issued for 12 European countries in 2026.">
+    <title>BMET Clearance Card Directory — European Migration Verification Portal</title>
+    <meta name="description" content="Searchable, verified directory of Bureau of Manpower, Employment and Training (BMET) Emigration Clearance Cards issued for European destinations.">
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -24,7 +24,7 @@
                 </div>
                 <div class="brand-text">
                     <span class="brand-title">BMET Clearance Directory</span>
-                    <span class="brand-subtitle">European Migration • Year 2026</span>
+                    <span class="brand-subtitle">European Migration Verification Portal</span>
                 </div>
             </div>
             
@@ -46,6 +46,12 @@
             </div>
 
             <div class="nav-actions">
+                <div class="year-filter-pill-wrap" title="Filter directory by year">
+                    <span class="year-pill-icon">📅</span>
+                    <select id="globalYearSelect" class="global-year-select" aria-label="Select Year">
+                        <option value="all">All Years</option>
+                    </select>
+                </div>
                 <button class="btn btn-secondary btn-sm" id="navViewAllBtn">
                     <span class="btn-icon">📁</span>
                     <span>All Countries</span>
@@ -71,7 +77,7 @@
                 </div>
                 <div class="hero-metrics-grid">
                     <div class="metric-card">
-                        <div class="metric-num" id="heroTotalCards">26,375</div>
+                        <div class="metric-num" id="heroTotalCards">—</div>
                         <div class="metric-label">Verified E-Cards</div>
                     </div>
                     <div class="metric-card">
@@ -110,15 +116,15 @@
                         <span class="back-arrow">←</span> All Countries
                     </button>
                     <span class="breadcrumb-separator">/</span>
-                    <span class="breadcrumb-current" id="explorerCountryBreadcrumb">Portugal</span>
+                    <span class="breadcrumb-current" id="explorerCountryBreadcrumb">Country</span>
                 </div>
 
                 <div class="country-info-row">
                     <div class="country-title-box">
-                        <span class="country-flag-hero" id="explorerFlag">🇵🇹</span>
+                        <span class="country-flag-hero" id="explorerFlag">🌐</span>
                         <div>
-                            <div class="country-meta-pill" id="explorerCode">PT</div>
-                            <h1 class="country-hero-name" id="explorerCountryName">Portugal</h1>
+                            <div class="country-meta-pill" id="explorerCode">—</div>
+                            <h1 class="country-hero-name" id="explorerCountryName">Destination Country</h1>
                             <p class="country-stat-summary" id="explorerCardSummary">
                                 Loading cards registry...
                             </p>
@@ -138,7 +144,7 @@
                     <div class="status-icon-box" id="statusBannerIcon">ℹ️</div>
                     <div class="status-text-box">
                         <div class="status-title" id="statusBannerTitle">Check Status</div>
-                        <div class="status-msg" id="statusBannerMsg">No new BMET clearance cards issued for this country.</div>
+                        <div class="status-msg" id="statusBannerMsg">No new cards found.</div>
                     </div>
                     <button class="status-dismiss-btn" id="statusDismissBtn">✕</button>
                 </div>
@@ -149,7 +155,7 @@
                 <div class="search-box-group">
                     <div class="search-input-wrapper">
                         <span class="search-icon">🔍</span>
-                        <input type="text" id="cardSearchInput" class="form-input search-input" placeholder="Search by name, passport, serial, visa, employer, agency...">
+                        <input type="text" id="cardSearchInput" class="form-input search-input" placeholder="Search by candidate name, serial / EC no, employer, agency...">
                         <button class="clear-search-btn hidden" id="clearSearchBtn">✕</button>
                     </div>
 
@@ -158,11 +164,17 @@
                         <select id="filterFieldSelect" class="form-select">
                             <option value="all">All Fields</option>
                             <option value="name">Candidate Name</option>
-                            <option value="passport">Passport No</option>
                             <option value="serial">Serial / EC No</option>
                             <option value="employer">Employer</option>
                             <option value="agency">Recruiting Agency</option>
-                            <option value="district">Home District</option>
+                            <option value="year">Issuance Year</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-dropdown-wrapper">
+                        <label for="explorerYearSelect" class="toolbar-label">Year:</label>
+                        <select id="explorerYearSelect" class="form-select">
+                            <option value="all">All Years</option>
                         </select>
                     </div>
                 </div>
@@ -201,7 +213,7 @@
 
             <!-- Results Status Bar -->
             <div class="results-meta-bar">
-                <span id="resultsCountText">Showing 1 – 25 of 6,573 cards</span>
+                <span id="resultsCountText">Loading cards...</span>
                 <span class="active-query-tag hidden" id="activeQueryTag"></span>
             </div>
 
@@ -224,12 +236,10 @@
                 <table class="data-table" id="cardsTable">
                     <thead>
                         <tr>
-                            <th style="width: 70px;">Photo</th>
-                            <th style="width: 150px;">Serial / EC No</th>
+                            <th style="width: 170px;">Serial / EC No</th>
+                            <th style="width: 90px;">Year</th>
                             <th>Candidate Name</th>
-                            <th>Passport No</th>
-                            <th>EC Date</th>
-                            <th>Visa No</th>
+                            <th style="width: 130px;">EC Date</th>
                             <th>Employer</th>
                             <th>Recruiting Agency</th>
                             <th style="text-align: right; width: 100px;">Action</th>
@@ -248,7 +258,7 @@
 
             <!-- Pagination Bar -->
             <div class="pagination-bar" id="paginationBar">
-                <div class="pagination-info" id="paginationInfo">Page 1 of 263</div>
+                <div class="pagination-info" id="paginationInfo">Page 1</div>
                 <div class="pagination-controls" id="paginationControls">
                     <!-- Populated dynamically -->
                 </div>
@@ -261,10 +271,10 @@
         <div class="modal-dialog">
             <div class="modal-header">
                 <div class="modal-title-wrap">
-                    <span class="modal-flag" id="modalFlag">🇵🇹</span>
+                    <span class="modal-flag" id="modalFlag">🌐</span>
                     <div>
                         <h3 class="modal-title" id="modalTitle">BMET Clearance Card</h3>
-                        <span class="modal-ec-no" id="modalEcNo">PT-I-2026-6000001</span>
+                        <span class="modal-ec-no" id="modalEcNo">—</span>
                     </div>
                 </div>
                 <button class="modal-close-btn" id="modalCloseBtn">✕</button>
@@ -282,8 +292,8 @@
                     </div>
 
                     <div class="ecard-candidate-row">
-                        <div class="ecard-photo-wrap">
-                            <img src="" alt="Candidate Photo" id="modalPhoto" class="ecard-photo" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'100\' height=\'100\' viewBox=\'0 0 24 24\' fill=\'%2364748b\'><path d=\'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z\'/></svg>'">
+                        <div class="ecard-avatar-wrap">
+                            <span class="ecard-avatar-icon" id="modalAvatarIcon">👤</span>
                         </div>
                         <div class="ecard-hero-info">
                             <h2 class="ecard-candidate-name" id="modalCandidateName">—</h2>
@@ -306,24 +316,6 @@
                         <div class="ecard-section">
                             <div class="section-pill">Recruiting Agency</div>
                             <div class="details-grid" id="modalAgencyGrid"></div>
-                        </div>
-
-                        <!-- Section 3: BMET Registration -->
-                        <div class="ecard-section">
-                            <div class="section-pill">BMET Registration</div>
-                            <div class="details-grid" id="modalBmetGrid"></div>
-                        </div>
-
-                        <!-- Section 4: Address Details -->
-                        <div class="ecard-section">
-                            <div class="section-pill">Permanent Address</div>
-                            <div class="details-grid" id="modalAddressGrid"></div>
-                        </div>
-
-                        <!-- Section 5: Emergency Contact -->
-                        <div class="ecard-section">
-                            <div class="section-pill">Emergency Contact</div>
-                            <div class="details-grid" id="modalEmergencyGrid"></div>
                         </div>
                     </div>
                 </div>
@@ -350,7 +342,7 @@
     <footer class="app-footer">
         <div class="footer-container">
             <div>
-                <strong>BMET Clearance Card Directory (2026)</strong> — European Migration Verification Portal.
+                <strong>BMET Clearance Card Directory</strong> — European Migration Verification Portal.
             </div>
             <div class="footer-links">
                 <span>Data Source: <a href="https://raims.oep.gov.bd" target="_blank" rel="noopener noreferrer">RAIMS Bureau of Manpower, Employment and Training (BMET)</a></span>
